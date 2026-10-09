@@ -98,6 +98,13 @@ export async function seed(db: Database, o: SeedOptions) {
       + '<p>Thank you,<br>{{school}}<br>{{phone}}</p>',
   }]).ignore().execute();
   await db.insertInto('email_templates').values([{
+    template_key: 'login_code',
+    subject: '{{code}} is your {{school}} sign-in code',
+    body_html: '<p>Hello {{name}},</p><p>Your code to {{purpose}} is:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:12px 0">{{code}}</p>'
+      + '<p>It works for {{minutes}} minutes. Do not share it with anyone; the school will never ask for it.</p>'
+      + '<p>If you did not try to sign in, change your password.</p>',
+  }]).ignore().execute();
+  await db.insertInto('email_templates').values([{
     template_key: 'contact_message',
     subject: 'Website message from {{name}}',
     body_html: '<p>New message from the school website.</p><p><strong>Name:</strong> {{name}}<br><strong>Mobile:</strong> {{mobile}}</p><p>{{message}}</p>',

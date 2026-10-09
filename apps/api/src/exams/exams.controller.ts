@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { sql } from 'kysely';
 import { KYSELY, type Database } from '../database/database.module';
 import { Errors } from '../common/app-error';
 import { AuditService } from '../common/audit.service';
@@ -12,7 +13,7 @@ import { FilesService, STORAGE_DIR } from '../common/files.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { clientMeta, CurrentUser, type AppRequest, type RequestUser } from '../common/request-user';
 import { RequirePermission } from '../permissions/permission.guard';
-import { studentFilter, visibleStudentId } from '../students/student-scope';
+import { photoStudentId, studentFilter, teacherSectionIds, visibleStudentId } from '../students/student-scope';
 import { StudentsService } from '../students/students.service';
 import { assertImage } from '../cms/files.controller';
 import { addDays, iso, schoolToday } from '../attendance/calendar';
@@ -250,16 +251,38 @@ export class ExamsController {
   }
 
   // ---------------- Student photo ----------------
-  @Post('students/:id/photo') @RequirePermission('students', 'edit')
+  @Post('students/:id/photo') @RequirePermission('students', 'view')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 3 * 1024 * 1024 } }))
   async photo(@CurrentUser() u: RequestUser, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File) {
     assertImage(file);
     if (file!.mimetype === 'image/webp') throw Errors.badRequest('NOT_AN_IMAGE', 'Use a JPG or PNG photo.');
     const y = await this.ex.yearFor();
-    const sid = await visibleStudentId(this.db, u, id, 'students.edit', y.id);
+    const sid = await photoStudentId(this.db, u, id, y.id);
     const fid = await this.files.save(file!.buffer, file!.originalname, file!.mimetype, 'student_photo', u.id);
+    const before = await this.db.selectFrom('students').select('photo_file_id').where('id', '=', sid).executeTakeFirst();
     await this.db.updateTable('students').set({ photo_file_id: fid, updated_by: u.id }).where('id', '=', sid).execute();
+    await this.audit.log(u, { module: 'students', action: 'photo', entityType: 'student', entityId: sid, before: { photo: before?.photo_file_id ?? null }, after: { photo: fid } });
     return { ok: true };
+  }
+
+  /** "Class photos": the sections whose students this person may photograph, and the students of one of them. */
+  @Get('student-photos') @RequirePermission('students', 'view')
+  async classPhotos(@CurrentUser() u: RequestUser, @Query('sectionId') sectionId?: string) {
+    if (u.workspace !== 'staff' || !(u.permissions.has('students.photo') || u.permissions.has('students.edit'))) throw Errors.forbidden();
+    const y = await this.ex.yearFor();
+    const all = u.permissions.get('students.photo') === 'all' || u.permissions.get('students.edit') === 'all';
+    const ids = all ? null : await teacherSectionIds(this.db, u.id, y.id);
+    let sq = this.db.selectFrom('sections as s').innerJoin('classes as c', 'c.id', 's.class_id').select(['s.id', 's.name', 'c.name as class_name'])
+      .where('s.is_active', '=', 1).where('c.is_active', '=', 1).orderBy('c.level_order').orderBy('s.name');
+    if (ids) sq = ids.length ? sq.where('s.id', 'in', ids) : sq.where('s.id', '=', -1);
+    const sections = (await sq.execute()).map((x) => ({ id: x.id, label: `${x.class_name} ${x.name}` }));
+    const sid = Number(sectionId) || sections[0]?.id;
+    if (!sid || !sections.some((x) => x.id === sid)) return { sections, sectionId: null, students: [] };
+    const students = await this.db.selectFrom('enrollments as e').innerJoin('students as st', 'st.id', 'e.student_id')
+      .select(['st.public_id', 'st.first_name', 'st.last_name', 'e.roll_no', 'st.photo_file_id'])
+      .where('e.section_id', '=', sid).where('e.academic_year_id', '=', y.id).where('st.status', '=', 'active')
+      .orderBy(sql`CAST(e.roll_no AS UNSIGNED)`).orderBy('st.first_name').execute();
+    return { sections, sectionId: sid, students: students.map((x) => ({ id: x.public_id, name: [x.first_name, x.last_name].filter(Boolean).join(' '), rollNo: x.roll_no, hasPhoto: !!x.photo_file_id })) };
   }
 
   @Get('students/:id/photo') @RequirePermission('students', 'view')

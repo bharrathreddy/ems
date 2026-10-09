@@ -1,7 +1,7 @@
 {
   "name": "ems",
   "private": true,
-  "version": "0.14.0",
+  "version": "0.16.0",
   "description": "Education Management System (single institute). Runs on XAMPP (MariaDB) locally and Hostinger Node.js hosting (MySQL/MariaDB).",
   "workspaces": [
     "apps/api",

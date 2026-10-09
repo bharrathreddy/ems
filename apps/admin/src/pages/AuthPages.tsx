@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError, fieldErrors } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuth, type TwoStep } from '../lib/auth';
 import { Field } from '../components/ui';
 
 /** The one bold moment: the school's name written on a blackboard. */
@@ -37,18 +37,49 @@ function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 }
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, verifyCode } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<TwoStep | null>(null);
+  const [code, setCode] = useState('');
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true); setError(null);
-    try { await login(identifier, password); }
+    try { const r = await login(identifier, password); if (r) { setStep(r); setCode(''); } }
     catch (err) { setError(err instanceof ApiError ? err.message : 'Could not sign in.'); }
     finally { setBusy(false); }
   };
+  const verify = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try { await verifyCode(step!.challengeId, code); }
+    catch (err) {
+      if (err instanceof ApiError && err.code === 'CODE_EXPIRED') { setStep(null); setPassword(''); }
+      setError(err instanceof ApiError ? (err.details?.[0]?.message ?? err.message) : 'Could not sign in.');
+    }
+    finally { setBusy(false); }
+  };
+  if (step) return (
+    <AuthFrame>
+      <h2 className="text-2xl font-semibold">Check your email</h2>
+      <p className="mt-2 text-ink-muted">We sent a 6-digit code to <strong className="text-ink">{step.sentTo}</strong>. It works for {step.expiresInMinutes} minutes.</p>
+      <form onSubmit={verify} className="mt-6 space-y-4" noValidate>
+        <Field label="Code from the email">
+          <input className="field text-center text-2xl font-semibold tracking-[0.4em]" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus required aria-describedby="code-help" />
+        </Field>
+        <p id="code-help" className="text-sm text-ink-muted">Not in your inbox? Look in spam, or send a new code.</p>
+        {error && <p className="rounded-lg bg-danger-soft px-3 py-2.5 text-sm font-medium text-danger" role="alert">{error}</p>}
+        <button className="btn-primary w-full" disabled={busy || code.length !== 6}>{busy ? 'Checking…' : 'Sign in'}</button>
+      </form>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" className="btn-quiet" disabled={busy} onClick={(e) => { setCode(''); void submit(e as unknown as FormEvent); }}>Send a new code</button>
+        <button type="button" className="btn-quiet" onClick={() => { setStep(null); setError(null); setPassword(''); }}>Back</button>
+      </div>
+    </AuthFrame>
+  );
   return (
     <AuthFrame>
       <h2 className="text-2xl font-semibold">Sign in</h2>

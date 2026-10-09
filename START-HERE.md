@@ -1,4 +1,4 @@
-# Start here (version 0.14.0)
+# Start here (version 0.16.0)
 
 This one package contains everything so far: students and parents, fees and receipts,
 teaching grid and timetable, the public school website, year end, attendance, the dashboard, exams and report cards, Excel/PDF exports, fee reminder emails, HR, payroll and expenses, and (new in 0.11.0) transport, stock and the sales counter.
@@ -21,7 +21,7 @@ teaching grid and timetable, the public school website, year end, attendance, th
    npm run build
    npm start
    ```
-5. Wait for: `Ready (version 0.14.0). Website: http://localhost:3000/ ...`
+5. Wait for: `Ready (version 0.16.0). Website: http://localhost:3000/ ...`
 6. Open:
    - Website: **http://localhost:3000/**
    - Staff and parent app: **http://localhost:3000/app/login**
@@ -55,10 +55,55 @@ If `npm start` says *The last build did not finish*, run `npm run build` again.
 2. **Teaching grid**: every class needs its subjects, and every subject a teacher (they enter the marks).
 3. **Exams → Settings**: check the grade scales and the result rules per class (marks, grades or both; pass mark).
 4. **Exams → Exams & schedule**: set exam dates. Add unit tests or pre-finals if you hold them.
-5. Students' photos (optional): staff tap the round photo on a student's page.
+5. Students' photos (optional): any teacher of the class can **Take** or **Upload** a photo on the student's page, or go through the whole class in **Students → Class photos**.
 
 The cycle: the subject teacher enters marks in **Marks** and submits → the principal approves in **Exams → Approvals**
 → the principal **publishes** each section → parents see results and the report card.
+
+## Hall tickets (new in 0.16.0)
+
+Needs the exams module and each exam's timetable (**Exams → Exams & schedule**: date and time of every paper, per class).
+
+- **Academic → Hall tickets**: choose the exam and the class/section, check the timetable, then **Print**. The PDF has
+  two hall tickets per A4 page (cut along the dotted line): school name and logo, the student's photo, name, class,
+  **roll number**, admission number, father's name, the subject-wise timetable, the instructions and signature lines.
+- Who can print: the office and principal for every class; any teacher for the sections they teach or are class teacher of.
+- Before printing it lists students **without a photo** (their ticket gets a "Paste photo" box; use Students → Class photos)
+  and **without a roll number** (set them in Year end → Roll numbers).
+- **Instructions**: written per exam on the same screen (one per line) by staff who can set up exams. Until then a standard set is printed.
+- **Parents** download (or share) their child's hall ticket on the child's page, **Marks** tab, until the exam is over.
+- Fees never block a hall ticket.
+
+## New in 0.15.0
+
+**Homework & class diary** (switch on *Homework & class diary* in the Developer console).
+- Any teacher of a section (class teacher, or anyone who teaches a subject there) posts in **Academic → Homework & diary**:
+  homework with a due date, or a class diary note (events, things to bring). A photo of the board/notebook or a PDF can be attached.
+- Parents see it on their child's page, **Homework** tab, with a "Still to do" list, and get an alert.
+- The teacher who posted it, or the class teacher, can edit or delete it.
+
+**Student photos by teachers.** Any teacher of the class can take a photo with the phone camera or upload one: on the
+student's page, or for the whole class at once in **Students → Class photos**. Photos are cropped square automatically.
+
+**Admission enquiries** (**Communication → Enquiries**, Institution Admin and developer). Every message from the website's
+contact page is kept as an enquiry: call or WhatsApp back, move it along *New → Called back → Visit booked → Admitted / Closed*,
+set a follow-up date and keep notes. The admin gets an alert for each new enquiry. (The old Website → Messages tab now points here;
+earlier messages were moved over.)
+
+**Phone notifications.** Each person can turn them on in **Profile** (or on the Alerts page) and switch each group off on that phone:
+- Parents: absence and leave · notices and homework · results and fee reminders.
+- Staff: leave updates · notices · things waiting for them (leave requests, expenses to approve, new enquiries).
+Works on Android (Chrome) and on iPhone after **Share → Add to Home Screen**. It needs the live https website (not plain http).
+Nothing to set up: the keys are created by the app and kept in the database.
+Fee reminders now also reach parents who use the app (as an alert), not only by email.
+
+**Hide private details per role** (Access & roles → a staff role → *Details on student records*): show or hide parents'
+phone and email, parents' address, and the student's address. If someone has two roles, they see a detail when either role shows it.
+
+**Two-step sign-in** (Developer console → *Sign-in security*). After the password, the developer and Institution Admin logins
+enter a 6-digit code sent to their email (10 minutes, 5 tries). It can be switched on only after you receive a test code,
+so set up email first (School settings → Email). Admins without an email address keep signing in with the password only;
+the card lists them.
 
 ## Access & roles (new in 0.14.0)
 

@@ -19,6 +19,9 @@ import { ImportsModule } from './imports/imports.module';
 import { FeesModule } from './fees/fees.module';
 import { TimetableModule } from './timetable/timetable.module';
 import { CmsModule } from './cms/cms.module';
+import { EnquiriesModule } from './enquiries/enquiries.module';
+import { HomeworkModule } from './homework/homework.module';
+import { PushModule } from './push/push.module';
 import { YearEndModule } from './yearend/yearend.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -39,7 +42,7 @@ import { AccessModule } from './access/access.module';
     }),
     DatabaseModule, CommonModule, PermissionsModule, MailModule,
     AuthModule, StaffModule, AcademicsModule, SettingsModule,
-    StudentsModule, AnnouncementsModule, NotificationsModule, ImportsModule, FeesModule, TimetableModule, CmsModule, YearEndModule, AttendanceModule, DashboardModule, ExamsModule, ExportsModule, HrModule, PayrollModule, TransportModule, InventoryModule, ActivityModule, AccessModule,
+    StudentsModule, AnnouncementsModule, NotificationsModule, ImportsModule, FeesModule, TimetableModule, CmsModule, YearEndModule, AttendanceModule, DashboardModule, ExamsModule, ExportsModule, HrModule, PayrollModule, TransportModule, InventoryModule, ActivityModule, AccessModule, EnquiriesModule, HomeworkModule, PushModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

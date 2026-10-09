@@ -116,7 +116,7 @@ describe('Exports, fee reminder emails, sitemap (e2e)', () => {
 
     it('emails each family once: upcoming dues and overdue fees; skips families without email', async () => {
       const r = (await as(dev).post('/api/v1/fees/reminders/run')).body.data;
-      expect(r).toEqual({ emails: 2, noEmail: 1 });
+      expect(r).toEqual({ emails: 2, noEmail: 1, appAlerts: 1 });
       const mails = await outbox();
       expect(mails.map((m) => m.to_email).sort()).toEqual(['asha.parent@test.local', 'bala.parent@test.local']);
       const bala = mails.find((m) => m.to_email.startsWith('bala'))!;
@@ -124,14 +124,14 @@ describe('Exports, fee reminder emails, sitemap (e2e)', () => {
       expect(bala.body_html).toContain('SA1 exam fee');
       expect(bala.body_html).toContain('Annual');
       // Nothing is repeated the same day; the family without email is still reported to the office.
-      expect((await as(dev).post('/api/v1/fees/reminders/run')).body.data).toEqual({ emails: 0, noEmail: 1 });
+      expect((await as(dev).post('/api/v1/fees/reminders/run')).body.data).toEqual({ emails: 0, noEmail: 1, appAlerts: 0 });
       expect(await outbox()).toHaveLength(2);
     });
 
     it('sends one reminder now from the dues list', async () => {
       expect((await as(dev).post(`/api/v1/students/${K.c.public_id}/fee-reminder`)).body.code).toBe('NO_EMAIL');
       const r = await as(dev).post(`/api/v1/students/${K.a.public_id}/fee-reminder`);
-      expect(r.body.data).toEqual({ sentTo: 'asha.parent@test.local', amount: 20000 });
+      expect(r.body.data).toEqual({ sentTo: 'asha.parent@test.local', appAlert: true, amount: 20000 });
       expect((await as(teacher).post(`/api/v1/students/${K.a.public_id}/fee-reminder`)).status).toBe(403);
     });
   });

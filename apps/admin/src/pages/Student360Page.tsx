@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, KeyRound, Pencil, UserX, UserCheck } from 'lucide-react';
+import { ArrowLeft, Camera, ImageUp, KeyRound, Pencil, UserX, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { api, ApiError, fieldErrors, shown } from '../lib/api';
@@ -15,8 +15,9 @@ import TimetableGrid, { type SectionTT } from '../components/TimetableGrid';
 import StudentAttendanceTab from '../components/StudentAttendanceTab';
 import StudentMarksTab from '../components/StudentMarksTab';
 import LeavingSheet from '../components/LeavingSheet';
-import { uploadImage } from '../lib/images';
-import { authHeadersPublic } from '../lib/api';
+import { squarePhoto } from '../lib/images';
+import { authHeadersPublic, uploadFile } from '../lib/api';
+import { StudentHomework } from '../components/HomeworkList';
 
 interface Student360 {
   public_id: string; admission_no: string; first_name: string; last_name: string | null; dob: string | null; gender: string | null;
@@ -128,7 +129,8 @@ export default function Student360Page() {
   const { can, me } = useAuth();
   const qc = useQueryClient();
   const staffView = me?.workspace === 'staff';
-  const [tab, setTab] = useState<'overview' | 'attendance' | 'marks' | 'timetable' | 'fees' | 'family' | 'history'>('overview');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<'overview' | 'attendance' | 'marks' | 'homework' | 'timetable' | 'fees' | 'family' | 'history'>(params.get('tab') === 'homework' ? 'homework' : 'overview');
   const [leaving, setLeaving] = useState(false);
   const [photoV, setPhotoV] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -167,7 +169,7 @@ export default function Student360Page() {
 
       <header className="panel mb-4 p-5">
         <div className="flex flex-wrap items-start gap-4">
-          <StudentPhoto id={s.public_id} initials={initials(name)} canEdit={staffView && can('students.edit')} version={photoV} onChange={() => setPhotoV(photoV + 1)} />
+          <StudentPhoto id={s.public_id} initials={initials(name)} canEdit={staffView && (can('students.edit') || can('students.photo'))} version={photoV} onChange={() => setPhotoV(photoV + 1)} />
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
             <p className="mt-0.5 text-ink-muted">
@@ -187,7 +189,7 @@ export default function Student360Page() {
       </header>
 
       <div className="-mx-4 mb-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0" role="tablist">
-        {([['overview', 'Overview'], ...(can('attendance.view') ? [['attendance', 'Attendance']] : []), ...(can('marks.view') ? [['marks', 'Marks']] : []), ...(can('timetable.view') ? [['timetable', 'Timetable']] : []), ...(can('fees.view') ? [['fees', 'Fees']] : []), ['family', 'Parents'], ['history', 'History']] as Array<[typeof tab, string]>).map(([k, label]) => (
+        {([['overview', 'Overview'], ...(can('attendance.view') ? [['attendance', 'Attendance']] : []), ...(can('marks.view') ? [['marks', 'Marks']] : []), ...(can('homework.view') ? [['homework', 'Homework']] : []), ...(can('timetable.view') ? [['timetable', 'Timetable']] : []), ...(can('fees.view') ? [['fees', 'Fees']] : []), ['family', 'Parents'], ['history', 'History']] as Array<[typeof tab, string]>).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={clsx('-mb-px shrink-0 border-b-2 px-4 py-2.5 text-[15px] font-semibold', tab === k ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink')}>{label}</button>
         ))}
@@ -205,6 +207,7 @@ export default function Student360Page() {
 
       {tab === 'fees' && <FeesTab studentId={s.public_id} studentName={name} />}
       {tab === 'timetable' && <StudentTimetable id={s.public_id} />}
+      {tab === 'homework' && <StudentHomework studentId={s.public_id} />}
       {tab === 'attendance' && <StudentAttendanceTab studentId={s.public_id} />}
       {tab === 'marks' && <StudentMarksTab studentId={s.public_id} name={name} classId={s.class_id} />}
       {staffView && <LeavingSheet studentId={s.public_id} name={name} open={leaving} onClose={() => setLeaving(false)} />}
@@ -282,8 +285,8 @@ function StudentTimetable({ id }: { id: string }) {
   return <section className="panel p-4">{q.data!.section.classTeacher && <p className="mb-3 text-sm text-ink-muted">Class teacher: <strong className="text-ink">{q.data!.section.classTeacher}</strong></p>}<TimetableGrid tt={q.data!} /></section>;
 }
 
-/** Student photo (staff can change it; shown on the report card). Loaded with the login token, never public. */
-function StudentPhoto({ id, initials, canEdit, version, onChange }: { id: string; initials: string; canEdit: boolean; version: number; onChange: () => void }) {
+/** Student photo (any teacher of the class can take or upload it; shown on the report card). Loaded with the login token, never public. */
+export function StudentPhoto({ id, initials, canEdit, version, onChange, size = 'md' }: { id: string; initials: string; canEdit: boolean; version: number; onChange: () => void; size?: 'md' | 'lg' }) {
   const [src, setSrc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -294,15 +297,25 @@ function StudentPhoto({ id, initials, canEdit, version, onChange }: { id: string
   const pick = async (f?: File) => {
     if (!f) return;
     setBusy(true);
-    try { await uploadImage(`/students/${id}/photo`, f); onChange(); } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    try { await uploadFile(`/students/${id}/photo`, await squarePhoto(f)); toast.success('Photo saved'); onChange(); }
+    catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
-  const img = src ? <img src={src} alt="" className="h-16 w-16 rounded-full object-cover" /> : <span className="grid h-16 w-16 place-items-center rounded-full bg-brand-soft text-xl font-semibold text-brand">{initials}</span>;
+  const dim = size === 'lg' ? 'h-24 w-24 text-3xl' : 'h-16 w-16 text-xl';
+  const img = src ? <img src={src} alt="" className={clsx(dim, 'rounded-full object-cover')} /> : <span className={clsx(dim, 'grid place-items-center rounded-full bg-brand-soft font-semibold text-brand')}>{initials}</span>;
   if (!canEdit) return <span className="shrink-0">{img}</span>;
   return (
-    <label className="group relative shrink-0 cursor-pointer" title="Change photo">
-      {img}
-      <span className="absolute inset-x-0 bottom-0 rounded-b-full bg-black/55 py-0.5 text-center text-[10px] font-semibold text-white opacity-0 group-hover:opacity-100">{busy ? '...' : 'Photo'}</span>
-      <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
-    </label>
+    <div className="flex shrink-0 flex-col items-center gap-1.5">
+      <span className={clsx(busy && 'opacity-50')}>{img}</span>
+      <div className="flex gap-1">
+        <label className="btn-quiet min-h-9 cursor-pointer px-2 text-xs" title="Take a photo with the camera">
+          <Camera size={14} aria-hidden />{busy ? 'Saving…' : 'Take'}
+          <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={busy} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        <label className="btn-quiet min-h-9 cursor-pointer px-2 text-xs" title="Choose a photo from this device">
+          <ImageUp size={14} aria-hidden />Upload
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="sr-only" disabled={busy} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+      </div>
+    </div>
   );
 }

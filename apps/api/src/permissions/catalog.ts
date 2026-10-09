@@ -11,7 +11,7 @@ export const PERMISSION_CATALOG: Record<string, string[]> = {
   roles: ['view', 'configure'],
   audit: ['view'],
   academics: ['view', 'manage'],
-  students: ['view', 'create', 'edit', 'deactivate', 'import', 'export'],
+  students: ['view', 'create', 'edit', 'deactivate', 'import', 'export', 'photo'],
   families: ['view', 'create', 'edit'],
   staff: ['view', 'create', 'edit', 'import'],
   announcements: ['view', 'create', 'publish'],
@@ -29,6 +29,8 @@ export const PERMISSION_CATALOG: Record<string, string[]> = {
   expenses: ['view', 'create', 'approve', 'configure'],
   transport: ['view', 'manage', 'log'],
   inventory: ['view', 'manage', 'sell'],
+  homework: ['view', 'post'],
+  enquiries: ['view', 'manage'],
 };
 
 export const CORE_MODULES = new Set(['settings', 'users', 'roles', 'audit']);
@@ -39,6 +41,7 @@ export const DEFAULT_FEATURE_FLAGS: Record<string, boolean> = {
   timetable: true,
   fees: false, payments: false, attendance: false, exams: false, marks: false, cms: true, reports: false,
   hr: false, payroll: false, expenses: false, transport: false, inventory: false,
+  homework: false, enquiries: true,
 };
 
 /** Broader scopes win when a user holds several roles. */
@@ -55,7 +58,7 @@ const viewOf = (...modules: string[]): Grant[] => modules.map((m) => [`${m}.view
 
 const principalGrants: Grant[] = [
   ...viewOf('settings', 'users', 'roles', 'audit', 'academics', 'students', 'families', 'staff', 'fees', 'payments',
-    'attendance', 'exams', 'marks', 'cms', 'reports', 'timetable', 'hr', 'payroll', 'expenses', 'transport', 'inventory'),
+    'attendance', 'exams', 'marks', 'cms', 'reports', 'timetable', 'hr', 'payroll', 'expenses', 'transport', 'inventory', 'homework'),
   ...all('announcements'),
   ['marks.approve', 'all'], ['marks.publish', 'all'], ['reports.export', 'all'], ['expenses.approve', 'all'],
 ];
@@ -73,12 +76,14 @@ export const DEFAULT_ROLES: RoleTemplate[] = [
   {
     key: 'teacher', name: 'Teacher', workspace: 'staff',
     grants: [['academics.view', 'all'], ['students.view', 'subject'], ['attendance.view', 'subject'],
-      ['marks.view', 'subject'], ['marks.enter', 'subject'], ['announcements.view', 'all'], ['timetable.view', 'all'], ['attendance.mark', 'subject']],
+      ['marks.view', 'subject'], ['marks.enter', 'subject'], ['announcements.view', 'all'], ['timetable.view', 'all'], ['attendance.mark', 'subject'],
+      ['students.photo', 'subject'], ['homework.view', 'subject'], ['homework.post', 'subject']],
   },
   {
     key: 'class_teacher', name: 'Class Teacher', workspace: 'staff',
     grants: [['students.view', 'section'], ['families.view', 'section'], ['attendance.view', 'section'],
-      ['attendance.mark', 'section'], ['marks.view', 'section'], ['announcements.create', 'section'], ['timetable.view', 'all']],
+      ['attendance.mark', 'section'], ['marks.view', 'section'], ['announcements.create', 'section'], ['timetable.view', 'all'],
+      ['students.photo', 'section'], ['homework.view', 'section'], ['homework.post', 'section']],
   },
   {
     key: 'exam_coordinator', name: 'Exam Coordinator', workspace: 'staff',
@@ -97,12 +102,12 @@ export const DEFAULT_ROLES: RoleTemplate[] = [
   {
     key: 'parent', name: 'Parent', workspace: 'parent',
     grants: [['students.view', 'own_children'], ['fees.view', 'own_children'], ['payments.view', 'own_children'],
-      ['attendance.view', 'own_children'], ['marks.view', 'own_children'], ['announcements.view', 'own_records'], ['timetable.view', 'own_children'], ['transport.view', 'own_children']],
+      ['attendance.view', 'own_children'], ['marks.view', 'own_children'], ['announcements.view', 'own_records'], ['timetable.view', 'own_children'], ['transport.view', 'own_children'], ['homework.view', 'own_children']],
   },
   {
     key: 'student', name: 'Student', workspace: 'student',
     grants: [['students.view', 'own_records'], ['fees.view', 'own_records'], ['payments.view', 'own_records'],
-      ['attendance.view', 'own_records'], ['marks.view', 'own_records'], ['announcements.view', 'own_records'], ['timetable.view', 'own_records']],
+      ['attendance.view', 'own_records'], ['marks.view', 'own_records'], ['announcements.view', 'own_records'], ['timetable.view', 'own_records'], ['homework.view', 'own_records']],
   },
 ];
 

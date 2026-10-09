@@ -318,19 +318,8 @@ export class CmsController {
     return { id };
   }
 
-  // ---------------- Messages and settings ----------------
-  @Get('messages') @RequirePermission('cms', 'view')
-  messages(@Query('status') status?: string) {
-    let q = this.db.selectFrom('contact_messages').selectAll().orderBy('id', 'desc').limit(200);
-    q = status === 'archived' ? q.where('status', '=', 'archived') : q.where('status', '!=', 'archived');
-    return q.execute();
-  }
-
-  @Patch('messages/:id') @RequirePermission('cms', 'manage')
-  async message(@Param('id', ParseIntPipe) id: number, @Body(new ZodPipe(z.object({ status: z.enum(['new', 'read', 'archived']) }))) b: { status: 'new' | 'read' | 'archived' }) {
-    await this.db.updateTable('contact_messages').set({ status: b.status }).where('id', '=', id).execute();
-    return { id, status: b.status };
-  }
+  // ---------------- Settings ----------------
+  // Website contact messages are admission enquiries now: see EnquiriesController.
 
   @Get('settings') @RequirePermission('cms', 'view')
   async settings() { return { contact: await this.cms.setting('contact'), social: await this.cms.setting('social') }; }

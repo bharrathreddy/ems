@@ -255,12 +255,16 @@ export interface ConcessionTypes {
 
 export interface ContactMessages {
   created_at: Generated<Date>;
+  follow_up_on: Generated<Date | null>;
   id: Generated<number>;
   ip_address: Generated<string | null>;
   message: string;
   mobile: Generated<string | null>;
   name: string;
-  status: Generated<"archived" | "new" | "read">;
+  seen_at: Generated<Date | null>;
+  status: Generated<"admitted" | "closed" | "contacted" | "new" | "visit">;
+  updated_at: Generated<Date | null>;
+  updated_by: Generated<number | null>;
   user_agent: Generated<string | null>;
 }
 
@@ -294,6 +298,15 @@ export interface EmailTemplates {
   updated_by: Generated<number | null>;
 }
 
+export interface EnquiryNotes {
+  created_at: Generated<Date>;
+  created_by: Generated<number | null>;
+  id: Generated<number>;
+  message_id: number;
+  note: string;
+  status_to: Generated<"admitted" | "closed" | "contacted" | "new" | "visit" | null>;
+}
+
 export interface Enrollments {
   academic_year_id: number;
   class_id: number;
@@ -324,6 +337,7 @@ export interface Exams {
   academic_year_id: number;
   code: string;
   created_at: Generated<Date>;
+  hall_ticket_note: Generated<string | null>;
   id: Generated<number>;
   kind: "fa" | "prefinal" | "sa" | "unit";
   max_marks: Decimal;
@@ -498,6 +512,22 @@ export interface Holidays {
   start_date: Date;
 }
 
+export interface Homework {
+  academic_year_id: number;
+  created_at: Generated<Date>;
+  details: Generated<string | null>;
+  due_date: Generated<Date | null>;
+  entry_type: Generated<"diary" | "homework">;
+  file_id: Generated<number | null>;
+  for_date: Date;
+  id: Generated<number>;
+  posted_by: number;
+  section_id: number;
+  subject_id: Generated<number | null>;
+  title: string;
+  updated_at: Generated<Date>;
+}
+
 export interface ImportJobs {
   completed_at: Generated<Date | null>;
   created_at: Generated<Date>;
@@ -587,6 +617,18 @@ export interface LeaveTypes {
   sort_order: Generated<number>;
 }
 
+export interface LoginChallenges {
+  attempts: Generated<number>;
+  code_hash: string;
+  created_at: Generated<Date>;
+  expires_at: Date;
+  id: string;
+  ip_address: Generated<string | null>;
+  used_at: Generated<Date | null>;
+  user_id: number;
+  workspace: "parent" | "staff" | "student";
+}
+
 export interface LoginLogs {
   created_at: Generated<Date>;
   id: Generated<number>;
@@ -644,6 +686,8 @@ export interface Notifications {
   created_at: Generated<Date>;
   id: Generated<number>;
   link_path: Generated<string | null>;
+  push_group: Generated<"absence" | "approvals" | "notices" | "results" | null>;
+  pushed_at: Generated<Date | null>;
   read_at: Generated<Date | null>;
   title: string;
   user_id: number;
@@ -765,6 +809,24 @@ export interface PlanInstallments {
   fee_plan_id: number;
   installment_no: number;
   label: string;
+}
+
+export interface PushSubscriptions {
+  auth_key: string;
+  created_at: Generated<Date>;
+  device: Generated<string | null>;
+  endpoint: string;
+  endpoint_hash: string;
+  failures: Generated<number>;
+  id: Generated<number>;
+  last_sent_at: Generated<Date | null>;
+  p256dh: string;
+  user_id: number;
+  want_absence: Generated<number>;
+  want_approvals: Generated<number>;
+  want_notices: Generated<number>;
+  want_results: Generated<number>;
+  workspace: "parent" | "staff" | "student";
 }
 
 export interface RolePermissions {
@@ -1203,6 +1265,7 @@ export interface DB {
   credential_issues: CredentialIssues;
   email_outbox: EmailOutbox;
   email_templates: EmailTemplates;
+  enquiry_notes: EnquiryNotes;
   enrollments: Enrollments;
   exam_classes: ExamClasses;
   exam_publications: ExamPublications;
@@ -1222,6 +1285,7 @@ export interface DB {
   grade_bands: GradeBands;
   grade_scales: GradeScales;
   holidays: Holidays;
+  homework: Homework;
   import_jobs: ImportJobs;
   institution_settings: InstitutionSettings;
   inventory_items: InventoryItems;
@@ -1229,6 +1293,7 @@ export interface DB {
   item_sets: ItemSets;
   leave_requests: LeaveRequests;
   leave_types: LeaveTypes;
+  login_challenges: LoginChallenges;
   login_logs: LoginLogs;
   mark_corrections: MarkCorrections;
   mark_sheets: MarkSheets;
@@ -1244,6 +1309,7 @@ export interface DB {
   payslips: Payslips;
   permissions: Permissions;
   plan_installments: PlanInstallments;
+  push_subscriptions: PushSubscriptions;
   role_permissions: RolePermissions;
   roles: Roles;
   route_fees: RouteFees;

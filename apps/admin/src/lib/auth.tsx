@@ -1,8 +1,10 @@
+import { forgetPushOnLogout } from './push';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, refreshAccessToken, session } from './api';
 import { applyBrand } from './brand';
 
+export interface TwoStep { twoStep: true; challengeId: string; sentTo: string; expiresInMinutes: number }
 export type Workspace = 'staff' | 'parent' | 'student';
 export interface Me {
   user: { id: string; name: string; email: string | null; mobile: string | null; isSuperAdmin: boolean };
@@ -20,7 +22,9 @@ interface AuthState {
   status: 'loading' | 'anonymous' | 'ready';
   me: Me | null;
   branding: Branding | null;
-  login: (identifier: string, password: string) => Promise<void>;
+  /** Signs in, or returns the emailed-code step for logins that use two-step sign-in. */
+  login: (identifier: string, password: string) => Promise<TwoStep | void>;
+  verifyCode: (challengeId: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
   switchWorkspace: (w: Workspace) => Promise<void>;
@@ -50,7 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [reload]);
 
   const login = async (identifier: string, password: string) => {
-    const { data } = await api<{ accessToken: string }>('/auth/login', { method: 'POST', body: { identifier, password } });
+    const { data } = await api<{ accessToken: string } | TwoStep>('/auth/login', { method: 'POST', body: { identifier, password } });
+    if ('twoStep' in data) return data;
+    session.setToken(data.accessToken);
+    await reload();
+  };
+  const verifyCode = async (challengeId: string, code: string) => {
+    const { data } = await api<{ accessToken: string }>('/auth/login/verify', { method: 'POST', body: { challengeId, code } });
     session.setToken(data.accessToken);
     await reload();
   };
@@ -75,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     if (session.proxyName()) return endProxy();
+    await forgetPushOnLogout();
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     session.setToken(null);
     session.setWorkspace(null);
@@ -96,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return p in me.permissions;
   };
 
-  return <Ctx.Provider value={{ status, me, branding, login, logout, reload, switchWorkspace, can, startProxy, endProxy }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ status, me, branding, login, verifyCode, logout, reload, switchWorkspace, can, startProxy, endProxy }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

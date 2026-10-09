@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, ExternalLink, ImagePlus, MessageCircle, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { api, ApiError, fieldErrors } from '../../lib/api';
@@ -285,27 +285,12 @@ export function VideosTab() {
 
 // ---------------- Messages ----------------
 export function MessagesTab() {
-  const qc = useQueryClient();
-  const [archived, setArchived] = useState(false);
-  const q = useQuery({ queryKey: ['cms-messages', archived], queryFn: () => api<any[]>('/cms/messages', { query: { status: archived ? 'archived' : undefined } }).then((r) => r.data) });
-  const set = useMutation({ mutationFn: (v: { id: number; status: string }) => api(`/cms/messages/${v.id}`, { method: 'PATCH', body: { status: v.status } }), onSuccess: () => qc.invalidateQueries({ queryKey: ['cms-messages'] }) });
   return (
-    <>
-      <div className="mb-3 inline-flex rounded-lg border border-line bg-chalk p-0.5">{['Inbox', 'Archived'].map((t, i) => <button key={t} aria-pressed={archived === (i === 1)} onClick={() => setArchived(i === 1)} className={clsx('rounded-md px-4 py-1.5 text-sm font-semibold', archived === (i === 1) ? 'bg-surface text-brand shadow-sm' : 'text-ink-muted')}>{t}</button>)}</div>
-      {q.isLoading ? <Skeleton rows={3} /> : !q.data!.length ? <EmptyState title="No messages" body="Messages sent from the website's contact page appear here and are emailed to the school." /> : (
-        <ul className="space-y-2">{q.data!.map((m) => (
-          <li key={m.id} className={clsx('panel p-4', m.status === 'new' && 'border-l-4 border-l-tangedu')} onClick={() => m.status === 'new' && set.mutate({ id: m.id, status: 'read' })}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2"><p className="font-semibold">{m.name}{m.mobile && <span className="font-normal text-ink-muted"> · {m.mobile}</span>}</p>
-              <p className="text-xs text-ink-muted">{new Date(m.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p></div>
-            <p className="mt-2 whitespace-pre-line">{m.message}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {m.mobile && <a className="btn-quiet min-h-9 text-sm" href={`https://wa.me/91${m.mobile}`} target="_blank" rel="noreferrer"><MessageCircle size={14} aria-hidden />WhatsApp</a>}
-              {m.mobile && <a className="btn-quiet min-h-9 text-sm" href={`tel:${m.mobile}`}><Phone size={14} aria-hidden />Call</a>}
-              <button className="btn-quiet min-h-9 text-sm" onClick={(e) => { e.stopPropagation(); set.mutate({ id: m.id, status: archived ? 'read' : 'archived' }); }}>{archived ? 'Move to inbox' : 'Archive'}</button>
-            </div>
-          </li>))}</ul>
-      )}
-    </>
+    <div className="panel max-w-2xl p-5">
+      <p className="font-semibold">Website messages are now admission enquiries</p>
+      <p className="mt-1 text-ink-muted">Every message from the contact page is kept as an enquiry, where the office can call back, book a visit, add notes and mark it admitted.</p>
+      <Link to="/enquiries" className="btn-primary mt-4">Open enquiries</Link>
+    </div>
   );
 }
 

@@ -19,6 +19,7 @@ const PROXY_COOKIE = 'ems_proxy_rt';
 const COOKIE_PATH = '/api/v1/auth';
 
 const LoginBody = z.object({ identifier: z.string().trim().min(3).max(190), password: z.string().min(1).max(128) });
+const VerifyBody = z.object({ challengeId: z.string().regex(/^[a-f0-9]{32}$/), code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code from the email.') });
 const RefreshBody = z.object({ refreshToken: z.string().optional() }).default({});
 const ChangePasswordBody = z.object({ currentPassword: z.string().min(1), newPassword: passwordPolicy });
 const ForgotBody = z.object({ email: z.string().trim().email() });
@@ -50,6 +51,16 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body(new ZodPipe(LoginBody)) body: z.infer<typeof LoginBody>, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
     const r = await this.auth.login(body.identifier, body.password, clientMeta(req));
+    if ('twoStep' in r) return r; // a code was emailed; the app asks for it next
+    return { ...this.deliverTokens(req, res, r), mustChangePassword: r.mustChangePassword, workspaces: r.workspaces };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('login/verify')
+  @HttpCode(200)
+  async verify(@Body(new ZodPipe(VerifyBody)) body: z.infer<typeof VerifyBody>, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    const r = await this.auth.verifyLoginCode(body.challengeId, body.code, clientMeta(req));
     return { ...this.deliverTokens(req, res, r), mustChangePassword: r.mustChangePassword, workspaces: r.workspaces };
   }
 

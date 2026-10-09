@@ -1,3 +1,4 @@
+import { staffWith } from '../common/holders';
 import { Inject, Injectable } from '@nestjs/common';
 import { KYSELY, type Database } from '../database/database.module';
 import { Errors } from '../common/app-error';
@@ -31,9 +32,9 @@ export class LeaveStaffService {
     if (!s) throw Errors.badRequest('NOT_STAFF', 'Only staff members can do this.');
     return s;
   }
-  private notify(trx: Database, userId: number | null, workspace: 'staff' | 'parent', title: string, body: string, link: string | null) {
+  private notify(trx: Database, userId: number | null, workspace: 'staff' | 'parent', title: string, body: string, link: string | null, push: 'absence' | 'approvals') {
     if (!userId) return Promise.resolve();
-    return trx.insertInto('notifications').values({ user_id: userId, workspace, category: 'academic', title, body, link_path: link }).execute();
+    return trx.insertInto('notifications').values({ user_id: userId, workspace, category: 'academic', push_group: push, title, body, link_path: link }).execute();
   }
 
   // ---------------- Leave requests ----------------
@@ -52,7 +53,7 @@ export class LeaveStaffService {
       const ct = await trx.selectFrom('enrollments as e').innerJoin('class_teachers as ct', (j) => j.onRef('ct.section_id', '=', 'e.section_id').onRef('ct.academic_year_id', '=', 'e.academic_year_id'))
         .innerJoin('staff as st', 'st.id', 'ct.staff_id').innerJoin('students as s', 's.id', 'e.student_id')
         .select(['st.user_id', 's.first_name', 's.last_name']).where('e.student_id', '=', sid).where('e.academic_year_id', '=', year.id).executeTakeFirst();
-      if (ct) await this.notify(trx, ct.user_id, 'staff', `Leave request: ${[ct.first_name, ct.last_name].filter(Boolean).join(' ')}`, `${fmt(b.startDate)}${b.endDate !== b.startDate ? ` to ${fmt(b.endDate)}` : ''}: ${b.reason}`, '/leave');
+      if (ct) await this.notify(trx, ct.user_id, 'staff', `Leave request: ${[ct.first_name, ct.last_name].filter(Boolean).join(' ')}`, `${fmt(b.startDate)}${b.endDate !== b.startDate ? ` to ${fmt(b.endDate)}` : ''}: ${b.reason}`, '/leave', 'approvals');
       await this.audit.log(u, { module: 'attendance', action: 'leave_request', entityType: 'leave_request', entityId: Number(r.insertId), after: b, ...meta }, trx);
       return r;
     });
@@ -79,8 +80,14 @@ export class LeaveStaffService {
         typeId = t.id;
       }
     }
-    const r = await this.db.insertInto('leave_requests').values({ kind: 'staff', staff_id: staff.id, leave_type_id: typeId, start_date: new Date(`${b.startDate}T00:00:00Z`), end_date: new Date(`${b.endDate}T00:00:00Z`), reason: b.reason, requested_by: u.id }).executeTakeFirstOrThrow();
-    await this.audit.log(u, { module: 'attendance', action: 'staff_leave_request', entityType: 'leave_request', entityId: Number(r.insertId), after: b, ...meta });
+    const r = await this.db.transaction().execute(async (trx) => {
+      const r = await trx.insertInto('leave_requests').values({ kind: 'staff', staff_id: staff.id, leave_type_id: typeId, start_date: new Date(`${b.startDate}T00:00:00Z`), end_date: new Date(`${b.endDate}T00:00:00Z`), reason: b.reason, requested_by: u.id }).executeTakeFirstOrThrow();
+      for (const id of await staffWith(trx, 'staff', 'edit', u.id)) {
+        await this.notify(trx, id, 'staff', `Leave request: ${u.name}`, `${fmt(b.startDate)}${b.endDate !== b.startDate ? ` to ${fmt(b.endDate)}` : ''}: ${b.reason}`, '/leave', 'approvals');
+      }
+      await this.audit.log(u, { module: 'attendance', action: 'staff_leave_request', entityType: 'leave_request', entityId: Number(r.insertId), after: b, ...meta }, trx);
+      return r;
+    });
     return { id: Number(r.insertId), status: 'pending' };
   }
 
@@ -151,7 +158,7 @@ export class LeaveStaffService {
         }
       }
       const range = `${fmt(iso(l.start_date)!)}${iso(l.end_date) !== iso(l.start_date) ? ` to ${fmt(iso(l.end_date)!)}` : ''}`;
-      await this.notify(trx, l.requested_by, l.kind === 'student' ? 'parent' : 'staff', `Leave ${approve ? 'approved' : 'not approved'}: ${range}`, note ?? '', l.kind === 'student' ? null : '/leave');
+      await this.notify(trx, l.requested_by, l.kind === 'student' ? 'parent' : 'staff', `Leave ${approve ? 'approved' : 'not approved'}: ${range}`, note ?? '', l.kind === 'student' ? null : '/leave', 'absence');
       await this.audit.log(u, { module: 'attendance', action: approve ? 'leave_approve' : 'leave_reject', entityType: 'leave_request', entityId: id, after: { note }, ...meta }, trx);
     });
     return { id, status: approve ? 'approved' : 'rejected' };

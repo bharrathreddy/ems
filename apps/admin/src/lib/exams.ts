@@ -18,12 +18,12 @@ export const RATINGS = [['excellent', 'Excellent'], ['good', 'Good'], ['needs_pr
 
 import { ApiError, authHeadersPublic, refreshAccessTokenPublic } from './api';
 
-/** Open an authenticated PDF (report card) in a new tab; on phones, share it (e.g. WhatsApp). */
+/** Open an authenticated PDF (report card, hall tickets) in a new tab; on phones, share it (e.g. WhatsApp). */
 export async function openPdf(path: string, name: string, share = false, retried = false): Promise<void> {
   const w = share ? null : window.open('', '_blank');
   const res = await fetch(`/api/v1${path}`, { headers: authHeadersPublic(), credentials: 'include' });
   if (res.status === 401 && !retried && (await refreshAccessTokenPublic())) { w?.close(); return openPdf(path, name, share, true); }
-  if (!res.ok) { w?.close(); throw new ApiError(res.status, 'PDF_FAILED', 'Could not create the report card.'); }
+  if (!res.ok) { w?.close(); const j = await res.json().catch(() => null); throw new ApiError(res.status, j?.code ?? 'PDF_FAILED', j?.message ?? 'Could not create the PDF.'); }
   const blob = await res.blob();
   const file = new File([blob], name, { type: 'application/pdf' });
   if (share && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }).catch(() => undefined); return; }

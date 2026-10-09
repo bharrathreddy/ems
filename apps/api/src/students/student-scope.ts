@@ -58,3 +58,34 @@ export async function visibleStudentId(db: Database, user: RequestUser, studentP
   if (!row) throw Errors.notFound('Student');
   return row.id;
 }
+
+/** Sections where the user is class teacher or teaches a subject this year ("any teacher of the section"). */
+export async function teacherSectionIds(db: Database, userId: number, yearId: number) {
+  const ct = await db.selectFrom('class_teachers as ct').innerJoin('staff as s', 's.id', 'ct.staff_id')
+    .select('ct.section_id').where('s.user_id', '=', userId).where('ct.academic_year_id', '=', yearId).execute();
+  const ta = await db.selectFrom('teacher_assignments as ta').innerJoin('staff as s', 's.id', 'ta.staff_id')
+    .select('ta.section_id').where('s.user_id', '=', userId).where('ta.academic_year_id', '=', yearId).execute();
+  return [...new Set([...ct, ...ta].map((r) => r.section_id))];
+}
+
+/**
+ * Students whose photo this user may change: anyone allowed to edit the student, or with
+ * students.photo — every student for scope "all", otherwise students of any section they teach.
+ */
+export async function photoStudentId(db: Database, user: RequestUser, studentPublicId: string, yearId: number) {
+  if (user.workspace !== 'staff') throw Errors.forbidden();
+  if (user.permissions.has('students.edit')) {
+    try { return await visibleStudentId(db, user, studentPublicId, 'students.edit', yearId); } catch { /* try the photo permission below */ }
+  }
+  const scope = user.permissions.get('students.photo');
+  if (!scope) throw Errors.forbidden();
+  let q = db.selectFrom('students as s').leftJoin('enrollments as e', (j) => j.onRef('e.student_id', '=', 's.id').on('e.academic_year_id', '=', yearId))
+    .select('s.id').where('s.public_id', '=', studentPublicId);
+  if (scope !== 'all') {
+    const ids = await teacherSectionIds(db, user.id, yearId);
+    q = ids.length ? q.where('e.section_id', 'in', ids) : q.where('s.id', '=', -1);
+  }
+  const row = await q.executeTakeFirst();
+  if (!row) throw Errors.notFound('Student');
+  return row.id;
+}

@@ -86,7 +86,7 @@ export class ExpensesService {
         const approvers = await trx.selectFrom('users as us').innerJoin('user_roles as ur', 'ur.user_id', 'us.id').innerJoin('role_permissions as rp', 'rp.role_id', 'ur.role_id')
           .innerJoin('permissions as p', 'p.id', 'rp.permission_id').innerJoin('roles as ro', 'ro.id', 'ur.role_id')
           .select('us.id').distinct().where('p.module_key', '=', 'expenses').where('p.action', '=', 'approve').where('ro.workspace', '=', 'staff').where('us.status', '=', 'active').where('us.id', '!=', u.id).execute();
-        if (approvers.length) await trx.insertInto('notifications').values(approvers.map((a) => ({ user_id: a.id, workspace: 'staff' as const, category: 'finance', title: `Expense to approve: ₹${new Intl.NumberFormat('en-IN').format(b.amount)}`, body: `${cat.name} · ${b.paidTo} · ${u.name}`, link_path: '/expenses' }))).execute();
+        if (approvers.length) await trx.insertInto('notifications').values(approvers.map((a) => ({ user_id: a.id, workspace: 'staff' as const, category: 'finance', push_group: 'approvals' as const, title: `Expense to approve: ₹${new Intl.NumberFormat('en-IN').format(b.amount)}`, body: `${cat.name} · ${b.paidTo} · ${u.name}`, link_path: '/expenses' }))).execute();
       }
       await this.audit.log(u, { module: 'expenses', action: 'create', entityType: 'expense', entityId: Number(r.insertId), after: { ...b, voucher, status: pending ? 'pending' : 'approved' }, ...meta }, trx);
       return { id: Number(r.insertId), publicId, voucher };

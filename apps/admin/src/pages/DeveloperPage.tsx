@@ -1,8 +1,10 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, fieldErrors } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { ErrorState, PageHeader, Skeleton, Toggle } from '../components/ui';
+import { Badge, ErrorState, Field, PageHeader, Skeleton, Toggle } from '../components/ui';
 
 const MODULE_INFO: Record<string, [string, string]> = {
   academics: ['Classes & years', 'Academic years, classes, sections, subjects'],
@@ -11,6 +13,7 @@ const MODULE_INFO: Record<string, [string, string]> = {
   staff: ['Staff', 'Staff records and roles'],
   announcements: ['Announcements', 'Notices to staff and parents'],
   imports: ['Bulk import', 'Excel imports'],
+  timetable: ['Timetable', 'Periods and class timetables'],
   fees: ['Fees', 'Release 2'], payments: ['Payments & receipts', 'Release 2'],
   attendance: ['Attendance', 'Release 3'], exams: ['Exams', 'Release 4'], marks: ['Marks', 'Release 4'],
   cms: ['Website', 'Release 5'], reports: ['Reports', 'Later'],
@@ -19,7 +22,59 @@ const MODULE_INFO: Record<string, [string, string]> = {
   expenses: ['Expenses', 'Release 6: spending with bills and approval'],
   transport: ['Transport', 'Release 7: buses, drivers, stops and times, fuel and service log (routes come from Fee setup)'],
   inventory: ['Stock & sales counter', 'Release 7: stock in and out, book sets, sales to students with receipts'],
+  homework: ['Homework & class diary', 'Teachers of a section post homework and diary notes; parents see them for their child'],
+  enquiries: ['Admission enquiries', 'Messages from the website contact form, followed up to admission'],
 };
+
+interface TwoStepStatus { enabled: boolean; changedAt: string | null; emailConfigured: boolean; testedAt: string | null; covered: Array<{ name: string; email: string | null; developer: boolean }> }
+
+/** Two-step sign-in: can be switched on only after a test code has arrived by email. */
+function TwoStepCard() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['two-step'], queryFn: () => api<TwoStepStatus>('/developer/two-step').then((r) => r.data) });
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const done = (d: TwoStepStatus) => qc.setQueryData(['two-step'], d);
+  const test = useMutation({ mutationFn: () => api<{ sentTo: string }>('/developer/two-step/test', { method: 'POST' }), onSuccess: ({ data }) => { setSentTo(data.sentTo); setErr(null); setCode(''); }, onError: (e) => toast.error((e as ApiError).message, { duration: 7000 }) });
+  const enable = useMutation({ mutationFn: () => api<TwoStepStatus>('/developer/two-step/enable', { method: 'POST', body: { code } }),
+    onSuccess: ({ data }) => { done(data); setSentTo(null); toast.success('Two-step sign-in is on'); },
+    onError: (e) => setErr(fieldErrors(e).code ?? (e as ApiError).message) });
+  const disable = useMutation({ mutationFn: () => api<TwoStepStatus>('/developer/two-step/disable', { method: 'POST' }), onSuccess: ({ data }) => { done(data); toast.success('Two-step sign-in is off'); } });
+  if (q.isLoading) return <Skeleton rows={2} />;
+  if (q.isError) return <ErrorState message={(q.error as Error).message} />;
+  const d = q.data!;
+  const noEmail = d.covered.filter((c) => !c.email);
+  return (
+    <div className="panel p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-semibold">Two-step sign-in {d.enabled ? <Badge tone="brand">On</Badge> : <Badge>Off</Badge>}</p>
+          <p className="mt-1 text-sm text-ink-muted">After the password, the developer and Institution Admin logins must enter a 6-digit code sent to their email. Other staff and parents sign in as before.</p>
+        </div>
+        {d.enabled && <button className="btn-quiet shrink-0" disabled={disable.isPending} onClick={() => { if (confirm('Switch off two-step sign-in? Admin logins will need only a password.')) disable.mutate(); }}>Switch off</button>}
+      </div>
+      <p className="mt-3 text-sm"><span className="text-ink-muted">Applies to: </span>{d.covered.map((c) => `${c.name}${c.email ? ` (${c.email})` : ''}`).join(', ') || 'nobody yet'}</p>
+      {noEmail.length > 0 && <p className="mt-2 rounded-lg bg-tangedu-soft px-3 py-2 text-sm">No email address, so they sign in with password only: <strong>{noEmail.map((c) => c.name).join(', ')}</strong>. Add their email on the Staff page.</p>}
+      {!d.enabled && (!d.emailConfigured ? (
+        <p className="mt-3 rounded-lg bg-tangedu-soft px-3 py-2 text-sm">Set up email first in <Link className="font-semibold text-brand underline" to="/settings">School settings → Email</Link>. The codes are sent by email, so it can be switched on only when email works.</p>
+      ) : !sentTo ? (
+        <button className="btn-primary mt-4" disabled={test.isPending} onClick={() => test.mutate()}>{test.isPending ? 'Sending…' : 'Send me a test code'}</button>
+      ) : (
+        <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); enable.mutate(); }}>
+          <p className="text-sm">We emailed a code to <strong>{sentTo}</strong>. Enter it to prove email works and switch two-step sign-in on.</p>
+          <Field label="Code from the test email" error={err ?? undefined}>
+            <input className="field max-w-40 text-center text-xl font-semibold tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primary" disabled={code.length !== 6 || enable.isPending}>Switch on</button>
+            <button type="button" className="btn-quiet" disabled={test.isPending} onClick={() => test.mutate()}>Send another code</button>
+          </div>
+        </form>
+      ))}
+    </div>
+  );
+}
 
 export default function DeveloperPage() {
   const { reload } = useAuth();
@@ -46,6 +101,10 @@ export default function DeveloperPage() {
             ))}
           </ul>
         )}
+      </section>
+      <section className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">Sign-in security</h2>
+        <TwoStepCard />
       </section>
       <section>
         <h2 className="mb-3 text-lg font-semibold">System health</h2>

@@ -76,12 +76,24 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
   private dueItems(studentIds?: number[]) {
     let q = this.db.selectFrom('fee_items as i').innerJoin('students as st', 'st.id', 'i.student_id').innerJoin('families as f', 'f.id', 'st.family_id').innerJoin('academic_years as y', 'y.id', 'i.academic_year_id')
       .leftJoin('enrollments as e', (j) => j.onRef('e.student_id', '=', 'st.id').on('e.academic_year_id', '=', this.db.selectFrom('academic_years').select('id').where('is_current', '=', 1).limit(1)))
+      .leftJoin('users as fu', (j) => j.onRef('fu.id', '=', 'f.user_id').on('fu.status', '=', 'active').on('fu.last_login_at', 'is not', null))
       .leftJoin('sections as sec', 'sec.id', 'e.section_id').leftJoin('classes as c', 'c.id', 'sec.class_id')
-      .select(['st.id as student_id', 'st.first_name', 'st.last_name', 'f.email', 'f.father_name', 'f.family_name', 'c.name as class_name', 'sec.name as section',
+      .select(['st.id as student_id', 'st.public_id', 'fu.id as family_user', 'st.first_name', 'st.last_name', 'f.email', 'f.father_name', 'f.family_name', 'c.name as class_name', 'sec.name as section',
         'i.label', 'i.due_date', 'i.balance', 'y.name as year', 'y.is_current'])
       .where('i.balance', '>', '0').where('st.status', '=', 'active');
     if (studentIds) q = q.where('st.id', 'in', studentIds.length ? studentIds : [0]);
     return q.orderBy('st.id').orderBy('i.due_date').execute();
+  }
+
+  /** In-app (and phone) alert for parents who use the app. */
+  private async appAlert(items: Awaited<ReturnType<FeeRemindersService['dueItems']>>) {
+    const s = items[0];
+    if (!s.family_user) return false;
+    const total = items.reduce((t, i) => t + toPaise(i.balance), 0);
+    const overdue = items.some((i) => i.due_date && iso(i.due_date)! < new Date().toISOString().slice(0, 10));
+    await this.db.insertInto('notifications').values({ user_id: s.family_user, workspace: 'parent', category: 'finance', push_group: 'results',
+      title: `Fee ${overdue ? 'overdue' : 'reminder'}: ${s.first_name} · ${formatINR(total)}`, body: items.map((i) => i.label).slice(0, 4).join(', '), link_path: `/students/${s.public_id}` }).execute();
+    return true;
   }
 
   private async queue(student: Awaited<ReturnType<FeeRemindersService['dueItems']>>, items: typeof student, school: { name: string; phone: string | null }) {
@@ -104,7 +116,7 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
     const byStudent = new Map<number, typeof rows>();
     for (const r of rows) byStudent.set(r.student_id, [...(byStudent.get(r.student_id) ?? []), r]);
     const logs = await this.db.selectFrom('fee_reminder_log').select(['student_id', 'kind', 'due_date', 'sent_on']).where('sent_on', '>=', new Date(`${addDays(today, -60)}T00:00:00Z`)).execute();
-    let emails = 0, noEmail = 0;
+    let emails = 0, noEmail = 0, appAlerts = 0;
     for (const [sid, items] of byStudent) {
       const upcoming = items.filter((i) => i.due_date && iso(i.due_date) === soon);
       const overdue = items.filter((i) => i.due_date && iso(i.due_date)! < today);
@@ -113,15 +125,19 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
       const lastOverdue = mine.filter((l) => l.kind === 'overdue' || l.kind === 'manual').map((l) => iso(l.sent_on)!).sort().pop();
       const sendOverdue = overdue.length > 0 && (!lastOverdue || lastOverdue <= addDays(today, -s.overdueEveryDays));
       if (!sendUpcoming && !sendOverdue) continue;
-      if (!items[0].email) { noEmail++; continue; }
       const list = [...(sendOverdue ? overdue : []), ...(sendUpcoming ? upcoming : [])];
-      const amount = await this.queue(items, list, school);
+      const app = await this.appAlert(list);
+      if (app) appAlerts++;
+      if (!items[0].email) noEmail++;
+      if (!items[0].email && !app) continue;
+      const amount = items[0].email ? await this.queue(items, list, school) : list.reduce((t, i) => t + toPaise(i.balance), 0);
+      const to = items[0].email || 'app';
       await this.db.insertInto('fee_reminder_log').values({ student_id: sid, kind: sendOverdue ? 'overdue' : 'before_due', due_date: sendUpcoming ? new Date(`${soon}T00:00:00Z`) : null,
-        sent_on: new Date(`${today}T00:00:00Z`), to_email: items[0].email!, amount: (amount / 100).toFixed(2) }).execute();
-      if (sendOverdue && sendUpcoming) await this.db.insertInto('fee_reminder_log').values({ student_id: sid, kind: 'before_due', due_date: new Date(`${soon}T00:00:00Z`), sent_on: new Date(`${today}T00:00:00Z`), to_email: items[0].email!, amount: '0' }).execute();
-      emails++;
+        sent_on: new Date(`${today}T00:00:00Z`), to_email: to, amount: (amount / 100).toFixed(2) }).execute();
+      if (sendOverdue && sendUpcoming) await this.db.insertInto('fee_reminder_log').values({ student_id: sid, kind: 'before_due', due_date: new Date(`${soon}T00:00:00Z`), sent_on: new Date(`${today}T00:00:00Z`), to_email: to, amount: '0' }).execute();
+      if (items[0].email) emails++;
     }
-    const result = { emails, noEmail };
+    const result = { emails, noEmail, appAlerts };
     await this.putSetting('reminders_last_run', { date: today, result });
     return result;
   }
@@ -132,10 +148,11 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
     if (!st) throw Errors.notFound('Student');
     const items = await this.dueItems([st.id]);
     if (!items.length) throw Errors.badRequest('NOTHING_DUE', 'This student has nothing due.');
-    if (!items[0].email) throw Errors.badRequest('NO_EMAIL', 'The parent has no email address. Add it on the student’s Parents tab, or send a WhatsApp reminder.');
+    if (!items[0].email && !items[0].family_user) throw Errors.badRequest('NO_EMAIL', 'The parent has no email address and does not use the app yet. Add an email on the student’s Parents tab, or send a WhatsApp reminder.');
     const today = await schoolToday(this.db);
-    const amount = await this.queue(items, items, await this.school());
-    await this.db.insertInto('fee_reminder_log').values({ student_id: st.id, kind: 'manual', sent_on: new Date(`${today}T00:00:00Z`), to_email: items[0].email, amount: (amount / 100).toFixed(2), sent_by: u.id }).execute();
-    return { sentTo: items[0].email, amount: amount / 100 };
+    const app = await this.appAlert(items);
+    const amount = items[0].email ? await this.queue(items, items, await this.school()) : items.reduce((t, i) => t + toPaise(i.balance), 0);
+    await this.db.insertInto('fee_reminder_log').values({ student_id: st.id, kind: 'manual', sent_on: new Date(`${today}T00:00:00Z`), to_email: items[0].email || 'app', amount: (amount / 100).toFixed(2), sent_by: u.id }).execute();
+    return { sentTo: items[0].email || 'the parent app', appAlert: app, amount: amount / 100 };
   }
 }

@@ -337,7 +337,7 @@ export class ExamsService {
       await trx.insertInto('exam_publications').values({ exam_id: examId, section_id: sectionId, published_by: u.id }).ignore().execute();
       const fams = await trx.selectFrom('enrollments as en').innerJoin('students as s', 's.id', 'en.student_id').innerJoin('families as f', 'f.id', 's.family_id')
         .select(['f.user_id', 's.public_id', 's.first_name']).where('en.section_id', '=', sectionId).where('en.academic_year_id', '=', e.academic_year_id).where('s.status', '=', 'active').execute();
-      const rows = fams.filter((f) => f.user_id).map((f) => ({ user_id: f.user_id!, workspace: 'parent' as const, category: 'academic' as const, title: `${e.name} results: ${f.first_name}`, body: 'Marks are now available in the app.', link_path: `/students/${f.public_id}` }));
+      const rows = fams.filter((f) => f.user_id).map((f) => ({ user_id: f.user_id!, workspace: 'parent' as const, category: 'academic' as const, push_group: 'results' as const, title: `${e.name} results: ${f.first_name}`, body: 'Marks are now available in the app.', link_path: `/students/${f.public_id}` }));
       if (rows.length) await trx.insertInto('notifications').values(rows).execute();
       await this.audit.log(u, { module: 'marks', action: 'publish', entityType: 'exam', entityId: examId, after: { sectionId }, ...meta }, trx);
     });
@@ -389,7 +389,7 @@ export class ExamsService {
       if (approve) {
         await trx.updateTable('marks').set({ marks: c.new_marks, is_absent: c.new_absent, updated_by: u.id }).where('id', '=', c.mark_id).execute();
         const published = await trx.selectFrom('exam_publications').select('exam_id').where('exam_id', '=', c.exam_id).where('section_id', '=', c.section_id).executeTakeFirst();
-        if (published && c.family_user) await trx.insertInto('notifications').values({ user_id: c.family_user, workspace: 'parent', category: 'academic', title: `${c.code} ${c.subject} mark corrected for ${c.first_name}`, body: 'The school corrected a mark. See the latest result in the app.', link_path: `/students/${c.public_id}` }).execute();
+        if (published && c.family_user) await trx.insertInto('notifications').values({ user_id: c.family_user, workspace: 'parent', category: 'academic', push_group: 'results', title: `${c.code} ${c.subject} mark corrected for ${c.first_name}`, body: 'The school corrected a mark. See the latest result in the app.', link_path: `/students/${c.public_id}` }).execute();
       }
       await trx.insertInto('notifications').values({ user_id: c.requested_by, workspace: 'staff', category: 'academic', title: `Correction ${approve ? 'approved' : 'not approved'}: ${c.code} ${c.subject}, ${c.first_name}`, body: note ?? '', link_path: '/marks' }).execute();
       await this.audit.log(u, { module: 'marks', action: approve ? 'correction_approve' : 'correction_reject', entityType: 'mark_correction', entityId: id, after: { note }, ...meta }, trx);

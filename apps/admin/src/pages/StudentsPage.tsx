@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ExportButtons from '../components/ExportButtons';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Plus, Search, Users } from 'lucide-react';
+import { Camera, Plus, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { api, ApiError, fieldErrors, shown } from '../lib/api';
@@ -163,7 +163,7 @@ export default function StudentsPage() {
   return (
     <div>
       <PageHeader title="Students" description={q.data?.meta ? `${q.data.meta.total} ${status} students · ${q.data.meta.academicYear}` : undefined}
-        action={<div className="flex flex-wrap gap-2"><ExportButtons list="students" params={{ classId, sectionId, status, search: term }} />{me?.permissions['students.view'] === 'all' && <Link to="/students/leaving" className="btn-quiet">Leaving students</Link>}{addButton}</div>} />
+        action={<div className="flex flex-wrap gap-2"><ExportButtons list="students" params={{ classId, sectionId, status, search: term }} />{(can('students.photo') || can('students.edit')) && <Link to="/students/photos" className="btn-quiet"><Camera size={16} aria-hidden />Class photos</Link>}{me?.permissions['students.view'] === 'all' && <Link to="/students/leaving" className="btn-quiet">Leaving students</Link>}{addButton}</div>} />
       <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden />

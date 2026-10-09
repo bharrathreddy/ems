@@ -1,3 +1,4 @@
+import PhoneAlerts from '../components/PhoneAlerts';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ export function ProfilePage() {
           {links.map((l) => <li key={l.to}><Link to={l.to} className="flex items-center gap-3 px-4 py-3.5 font-medium"><l.icon size={18} className="text-brand" aria-hidden />{l.label}</Link></li>)}
         </ul>
       )}
+      <div className="mb-4"><PhoneAlerts /></div>
       <div className="space-y-2">
         <button className="btn-quiet w-full" onClick={() => setPwOpen(true)}>Change password</button>
         <button className="btn-quiet w-full" onClick={auth.logout}><LogOut size={16} aria-hidden />Log out</button>
@@ -54,6 +56,7 @@ export function AlertsPage() {
   return (
     <div className="max-w-2xl">
       <PageHeader title="Alerts" action={unread > 0 ? <button className="btn-quiet min-h-9 text-sm" onClick={() => readAll.mutate()}>Mark all read</button> : undefined} />
+      <div className="mb-4"><PhoneAlerts compact /></div>
       {q.isLoading ? <Skeleton rows={3} /> : !q.data?.length ? <EmptyState title="No alerts" body="Notices from the school and system messages will appear here." /> : (
         <ul className="panel divide-y divide-line">
           {q.data.map((n) => (

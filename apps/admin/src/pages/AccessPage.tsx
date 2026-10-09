@@ -11,8 +11,8 @@ import {
 } from '../lib/access';
 import { Badge, EmptyState, ErrorState, Field, PageHeader, Sheet, Skeleton, Toggle } from '../components/ui';
 
-interface Role { id: number; key: string; name: string; description: string | null; workspace: Workspace; isSystem: boolean; isActive: boolean; people: number; grants: Grants }
-interface Overview { modules: ModuleInfo[]; scopes: Record<Workspace, Scope[]>; roles: Role[] }
+interface Role { id: number; key: string; name: string; description: string | null; workspace: Workspace; isSystem: boolean; isActive: boolean; people: number; grants: Grants; fields: Record<string, 'hidden' | 'view'> }
+interface Overview { modules: ModuleInfo[]; scopes: Record<Workspace, Scope[]>; roles: Role[]; fieldRules: Array<{ key: string; label: string }> }
 interface Person { id: string; name: string; mobile: string | null; email: string | null; active: boolean; staffId: string | null; employeeCode: string | null;
   roles: Array<{ id: number; key: string; name: string; workspace: Workspace; isActive: boolean }>; workspaces: Workspace[];
   effective: Partial<Record<Workspace, Grants>>; overrides: Array<{ workspace: Workspace; perm: string; effect: 'grant' | 'deny'; scope: Scope | null }> }
@@ -41,6 +41,32 @@ function ScopeSelect({ ws, scopes, value, onChange, label }: { ws: Workspace; sc
 }
 
 // ---------------- Roles ----------------
+/** Which details on a student's record this staff role sees. Saves at once. */
+function FieldRules({ role, data }: { role: Role; data: Overview }) {
+  const qc = useQueryClient();
+  const save = useMutation({ mutationFn: (f: Record<string, 'hidden' | 'view'>) => api<Overview>(`/developer/access/roles/${role.id}/fields`, { method: 'PUT', body: { fields: f } }),
+    onSuccess: ({ data: d }) => { qc.setQueryData(['access'], d); toast.success('Saved. It applies right away.'); }, onError: err });
+  return (
+    <div className="panel p-4">
+      <p className="font-semibold">Details on student records</p>
+      <p className="mt-0.5 text-sm text-ink-muted">Hide private details from this role. If someone has two roles, they see a detail when either role shows it.</p>
+      <ul className="mt-3 divide-y divide-line">{data.fieldRules.map((f) => {
+        const v = role.fields?.[f.key] ?? 'view';
+        return (
+          <li key={f.key} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+            <span className="text-[15px] font-medium">{f.label}</span>
+            <div className="inline-flex rounded-lg border border-line bg-chalk p-0.5" role="radiogroup" aria-label={f.label}>
+              {(['view', 'hidden'] as const).map((o) => (
+                <button key={o} role="radio" aria-checked={v === o} disabled={save.isPending} onClick={() => v !== o && save.mutate({ [f.key]: o })}
+                  className={clsx('rounded-md px-3 py-1.5 text-sm font-semibold', v === o ? 'bg-surface shadow-sm ' + (o === 'view' ? 'text-brand' : 'text-ink') : 'text-ink-muted')}>{o === 'view' ? 'Visible' : 'Hidden'}</button>
+              ))}
+            </div>
+          </li>);
+      })}</ul>
+    </div>
+  );
+}
+
 function RoleEditor({ role, data, onDeleted }: { role: Role; data: Overview; onDeleted: () => void }) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState<Grants>(role.grants);
@@ -65,6 +91,7 @@ function RoleEditor({ role, data, onDeleted }: { role: Role; data: Overview; onD
         </div>
         <p className="mt-2 text-sm text-ink-muted">{WS_LABEL[role.workspace]} login · {role.people} {role.people === 1 ? 'person' : 'people'}{role.isSystem ? ' · built-in role' : ''}{!role.isActive ? ' · switched off: nobody gets anything from this role' : ''}</p>
       </div>
+      {role.workspace === 'staff' && data.fieldRules?.length > 0 && <FieldRules role={role} data={data} />}
       <ul className="panel divide-y divide-line">{modules.map((m) => {
         const lv = levelOf(draft, m); const sc = scopeOf(draft, m, role.workspace);
         return (

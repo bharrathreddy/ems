@@ -7,7 +7,7 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Field, Sheet, Toggle } from './ui';
 
-interface S { enabled: boolean; daysBefore: number; overdueEveryDays: number; studentsWithDuesWithoutEmail: number; emailConfigured: boolean; lastRun: { date: string; result: { emails: number; noEmail: number } } | null }
+interface S { enabled: boolean; daysBefore: number; overdueEveryDays: number; studentsWithDuesWithoutEmail: number; emailConfigured: boolean; lastRun: { date: string; result: { emails: number; noEmail: number; appAlerts?: number } } | null }
 
 /** Fee reminder emails: on/off and timing (off until the admin switches it on). */
 export default function ReminderSettings() {
@@ -18,8 +18,8 @@ export default function ReminderSettings() {
   const [f, setF] = useState({ enabled: false, daysBefore: 3, overdueEveryDays: 7 });
   useEffect(() => { if (q.data) setF({ enabled: q.data.enabled, daysBefore: q.data.daysBefore, overdueEveryDays: q.data.overdueEveryDays }); }, [q.data]);
   const save = useMutation({ mutationFn: () => api('/fees/reminders', { method: 'PUT', body: f }), onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['fee-reminders'] }); setOpen(false); }, onError: (e) => toast.error((e as ApiError).message) });
-  const run = useMutation({ mutationFn: () => api<{ emails: number; noEmail: number }>('/fees/reminders/run', { method: 'POST' }),
-    onSuccess: ({ data }) => { toast.success(`${data.emails} reminder email${data.emails === 1 ? '' : 's'} queued${data.noEmail ? `; ${data.noEmail} famil${data.noEmail === 1 ? 'y has' : 'ies have'} no email` : ''}`); qc.invalidateQueries({ queryKey: ['fee-reminders'] }); },
+  const run = useMutation({ mutationFn: () => api<{ emails: number; noEmail: number; appAlerts?: number }>('/fees/reminders/run', { method: 'POST' }),
+    onSuccess: ({ data }) => { toast.success(`${data.emails} reminder email${data.emails === 1 ? '' : 's'} queued${data.appAlerts ? `, ${data.appAlerts} sent to the parent app` : ''}${data.noEmail ? `; ${data.noEmail} famil${data.noEmail === 1 ? 'y has' : 'ies have'} no email` : ''}`); qc.invalidateQueries({ queryKey: ['fee-reminders'] }); },
     onError: (e) => toast.error((e as ApiError).message) });
   const d = q.data;
   if (!d) return null;
@@ -37,7 +37,7 @@ export default function ReminderSettings() {
             <Field label="Days before the due date"><input type="number" min={0} max={30} className="field" disabled={!edit} value={f.daysBefore} onChange={(e) => setF({ ...f, daysBefore: Number(e.target.value) })} /></Field>
             <Field label="Repeat overdue every (days)"><input type="number" min={1} max={60} className="field" disabled={!edit} value={f.overdueEveryDays} onChange={(e) => setF({ ...f, overdueEveryDays: Number(e.target.value) })} /></Field>
           </div>
-          {d.lastRun && <p className="text-sm text-ink-muted">Last run {new Date(`${d.lastRun.date}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })}: {d.lastRun.result.emails} emails{d.lastRun.result.noEmail ? `, ${d.lastRun.result.noEmail} without email` : ''}.</p>}
+          {d.lastRun && <p className="text-sm text-ink-muted">Last run {new Date(`${d.lastRun.date}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })}: {d.lastRun.result.emails} emails{d.lastRun.result.appAlerts ? `, ${d.lastRun.result.appAlerts} app alerts` : ''}{d.lastRun.result.noEmail ? `, ${d.lastRun.result.noEmail} without email` : ''}.</p>}
           {edit && d.enabled && <button className="btn-quiet w-full" disabled={run.isPending} onClick={() => run.mutate()}>Send today's reminders now</button>}
         </div>
       </Sheet>

@@ -135,7 +135,7 @@ export class AttendanceService {
       for (const s of newlyAbsent) {
         const name = [s.first_name, s.last_name].filter(Boolean).join(' ');
         const rows = [{ user_id: s.family_user_id, workspace: 'parent' as const }, ...(s.user_id ? [{ user_id: s.user_id, workspace: 'student' as const }] : [])].filter((r) => r.user_id);
-        if (rows.length) await trx.insertInto('notifications').values(rows.map((r) => ({ user_id: r.user_id!, workspace: r.workspace, category: 'academic' as const,
+        if (rows.length) await trx.insertInto('notifications').values(rows.map((r) => ({ user_id: r.user_id!, workspace: r.workspace, category: 'academic' as const, push_group: 'absence' as const,
           title: `${name} was marked absent on ${fmt(date)}`, body: 'If this is not correct, or your child is unwell, please inform the class teacher.', link_path: `/students/${s.public_id}` }))).execute();
       }
       if (changes.length || !existingDay) await this.audit.log(u, { module: 'attendance', action: existingDay ? 'update' : 'mark', entityType: 'section', entityId: sectionId, after: { date, changes }, ...meta }, trx);

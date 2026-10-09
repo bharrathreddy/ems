@@ -7,6 +7,7 @@ import { AuditService } from '../common/audit.service';
 import type { RequestUser, Workspace } from '../common/request-user';
 import { PermissionsService } from '../permissions/permissions.service';
 import { MailService } from '../mail/mail.service';
+import { TwoStepService } from './two-step.service';
 import { dummyVerify, hashPassword, newToken, normalizeMobile, sha256, verifyPassword } from './passwords';
 
 interface Meta { ip: string | null; userAgent: string | null }
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly perms: PermissionsService,
     private readonly audit: AuditService,
     private readonly mail: MailService,
+    private readonly twoStep: TwoStepService,
   ) {}
 
   private findByIdentifier(identifier: string) {
@@ -64,12 +66,37 @@ export class AuthService {
       await this.logLogin(user.id, identifier, false, 'no_workspace', meta);
       throw Errors.accountDisabled();
     }
+    if (await this.twoStep.isRequiredFor(user)) {
+      await this.db.updateTable('users').set({ failed_login_count: 0, locked_until: null }).where('id', '=', user.id).execute();
+      return this.twoStep.challenge(user, 'staff', meta);
+    }
+    return this.finishLogin(user, identifier, workspaces, meta, null);
+  }
+
+  private async finishLogin(user: { id: number; must_change_password: number }, identifier: string, workspaces: Workspace[], meta: Meta, reason: string | null) {
     await this.db.updateTable('users')
       .set({ failed_login_count: 0, locked_until: null, last_login_at: new Date() })
       .where('id', '=', user.id).execute();
-    await this.logLogin(user.id, identifier, true, null, meta);
+    await this.logLogin(user.id, identifier, true, reason, meta);
     const tokens = await this.createSession(user.id, meta);
     return { ...tokens, mustChangePassword: user.must_change_password === 1, workspaces };
+  }
+
+  /** Second step: the emailed 6-digit code. */
+  async verifyLoginCode(challengeId: string, code: string, meta: Meta) {
+    const r = await this.twoStep.verify(challengeId, code);
+    const user = await this.db.selectFrom('users').selectAll().where('id', '=', r.userId).executeTakeFirst();
+    if (!user) throw Errors.unauthenticated();
+    const identifier = user.email ?? user.mobile ?? user.name;
+    if (!r.ok) {
+      await this.logLogin(user.id, identifier, false, 'bad_code', meta);
+      if (r.left <= 0) throw Errors.badRequest('CODE_EXPIRED', 'Too many wrong codes. Sign in again to get a new code.');
+      throw Errors.validation([{ field: 'code', message: `That code is not right. ${r.left} ${r.left === 1 ? 'try' : 'tries'} left.` }]);
+    }
+    if (user.status !== 'active') { await this.logLogin(user.id, identifier, false, 'disabled', meta); throw Errors.accountDisabled(); }
+    const workspaces = await this.perms.availableWorkspaces(user.id, user.is_super_admin === 1);
+    if (!workspaces.length) throw Errors.accountDisabled();
+    return this.finishLogin(user, identifier, workspaces, meta, 'two_step');
   }
 
   private async createSession(userId: number, meta: Meta, impersonatorId: number | null = null) {

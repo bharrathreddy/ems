@@ -9,6 +9,7 @@ import { clientMeta, Public, type AppRequest } from '../common/request-user';
 import { MailService } from '../mail/mail.service';
 import { normalizeMobile } from '../auth/passwords';
 import { CmsService } from './cms.service';
+import { staffWith } from '../common/holders';
 
 const Contact = z.object({
   name: z.string().trim().min(2, 'Enter your name.').max(100),
@@ -59,6 +60,10 @@ export class PublicController {
     const site = await this.cms.site();
     await this.db.transaction().execute(async (trx) => {
       await trx.insertInto('contact_messages').values({ name: b.name, mobile: b.mobile, message: b.message, ip_address: meta.ip, user_agent: meta.userAgent }).execute();
+      // Every website message is an admission enquiry: alert the people who follow enquiries up.
+      const to = await staffWith(trx, 'enquiries', 'view');
+      if (to.length) await trx.insertInto('notifications').values(to.map((id) => ({ user_id: id, workspace: 'staff' as const, category: 'communication' as const, push_group: 'approvals' as const,
+        title: `New enquiry: ${b.name}`, body: b.message.replace(/\s+/g, ' ').slice(0, 200), link_path: '/enquiries' }))).execute();
       if (site.school.email) await this.mail.queueTemplate(site.school.email, 'contact_message', { name: b.name, mobile: b.mobile ?? 'not given', message: b.message }, trx);
     });
     const text = `Hello ${site.school.name}, I am ${b.name}${b.mobile ? ` (${b.mobile})` : ''}.\n${b.message}`;

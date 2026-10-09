@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Bell, BookOpen, CheckSquare, Home, LogOut, Search, Settings, Users, Wrench, UserRound, ArrowLeftRight, GraduationCap, Megaphone, FileSpreadsheet, Wallet, ReceiptText, AlertCircle, SlidersHorizontal, Grid3x3, CalendarDays, Globe, CalendarClock, UserCheck, CalendarOff, ClipboardList, PenLine, Banknote, Receipt, FileText, Bus, Package, ShoppingBag, Eye, History, UserCog, ShieldCheck } from 'lucide-react';
+import { Bell, BookOpen, CheckSquare, Home, LogOut, Search, Settings, Users, Wrench, UserRound, ArrowLeftRight, GraduationCap, Megaphone, FileSpreadsheet, Wallet, ReceiptText, AlertCircle, SlidersHorizontal, Grid3x3, CalendarDays, Globe, CalendarClock, UserCheck, CalendarOff, ClipboardList, PenLine, Banknote, Receipt, FileText, Bus, Package, ShoppingBag, Eye, History, UserCog, ShieldCheck, BookOpenCheck, Inbox, Ticket } from 'lucide-react';
 import { useUnreadCount } from '../lib/notifications';
 import { VersionBanner } from './ServerCheck';
 import { startAutoFlush } from '../lib/offline';
@@ -27,14 +27,17 @@ export const NAV: NavItem[] = [
   { to: '/transport', label: 'Transport', icon: Bus, show: (a) => a.me?.permissions['transport.view'] === 'all' && a.can('transport.view') && a.me?.workspace === 'staff', group: 'Operations' },
   { to: '/transport', label: 'My bus', icon: Bus, show: (a) => a.me?.permissions['transport.view'] === 'assigned_route' && a.can('transport.view') && a.me?.workspace === 'staff', group: 'Operations' },
   { to: '/announcements', label: 'Notices', icon: Megaphone, show: (a) => a.can('announcements.view'), group: 'Communication' },
+  { to: '/homework', label: 'Homework & diary', icon: BookOpenCheck, show: (a) => a.can('homework.view') && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/attendance', label: 'Attendance', icon: UserCheck, show: (a) => a.can('attendance.view') && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/leave', label: 'Leave requests', icon: CalendarOff, show: (a) => a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/exams', label: 'Exams', icon: ClipboardList, show: (a) => a.can('exams.view') && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/marks', label: 'Marks', icon: PenLine, show: (a) => (a.can('marks.enter') || a.me?.permissions['marks.view'] === 'section') && a.me?.workspace === 'staff', group: 'Academic' },
+  { to: '/hall-tickets', label: 'Hall tickets', icon: Ticket, show: (a) => a.can('marks.view') && !!a.me?.features?.exams && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/timetable', label: 'Timetable', icon: CalendarDays, show: (a) => a.can('timetable.view') && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/teaching', label: 'Teaching grid', icon: Grid3x3, show: (a) => a.can('academics.manage') && a.me?.workspace === 'staff', group: 'Academic' },
   { to: '/year-end', label: 'Year end', icon: CalendarClock, show: (a) => a.me?.workspace === 'staff' && (!!a.me?.user.isSuperAdmin || a.me?.permissions['roles.configure'] === 'all'), group: 'Academic' },
   { to: '/academics', label: 'Classes & years', icon: BookOpen, show: (a) => a.can('academics.view') && a.me?.workspace === 'staff', group: 'Academic' },
+  { to: '/enquiries', label: 'Enquiries', icon: Inbox, show: (a) => a.can('enquiries.view') && a.me?.workspace === 'staff', group: 'Communication' },
   { to: '/website', label: 'Website', icon: Globe, show: (a) => a.can('cms.view') && a.me?.workspace === 'staff', group: 'Communication' },
   { to: '/imports', label: 'Bulk import', icon: FileSpreadsheet, show: (a) => a.can('imports.run'), group: 'Administration' },
   { to: '/settings', label: 'School settings', icon: Settings, show: (a) => a.can('settings.view'), group: 'Administration' },

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, FileText, Share2 } from 'lucide-react';
+import { CalendarDays, FileText, Share2, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { api } from '../lib/api';
@@ -14,6 +14,7 @@ export default function StudentMarksTab({ studentId, name, classId }: { studentI
   const family = me?.workspace !== 'staff';
   const q = useQuery({ queryKey: ['student-marks', studentId], queryFn: () => api<any>(`/students/${studentId}/marks`).then((r) => r.data) });
   const up = useQuery({ queryKey: ['exams-upcoming'], queryFn: () => api<any[]>('/exams/upcoming').then((r) => r.data) });
+  const tickets = useQuery({ queryKey: ['hall-tickets', studentId], queryFn: () => api<Array<{ examId: number; code: string; name: string; first: string; last: string }>>(`/students/${studentId}/hall-tickets`).then((r) => r.data) });
   if (q.isLoading) return <Skeleton rows={5} />;
   if (q.isError) return <ErrorState message={(q.error as Error).message} />;
   const r = q.data;
@@ -28,6 +29,21 @@ export default function StudentMarksTab({ studentId, name, classId }: { studentI
           <h2 className="mb-2 flex items-center gap-2 font-semibold"><CalendarDays size={18} className="text-brand" aria-hidden />Coming exams</h2>
           <ul className="divide-y divide-line">{papers.slice(0, 10).map((p, i) => (
             <li key={i} className="flex justify-between gap-2 py-2 text-sm"><span><strong>{p.exam}</strong> · {p.subject}</span><span className="text-ink-muted">{d(p.date)}{p.start ? `, ${p.start}${p.end ? `–${p.end}` : ''}` : ''}</span></li>))}</ul>
+        </section>
+      )}
+      {(tickets.data ?? []).length > 0 && (
+        <section className="panel p-4">
+          <h2 className="mb-1 flex items-center gap-2 font-semibold"><Ticket size={18} className="text-brand" aria-hidden />Hall ticket</h2>
+          <p className="mb-3 text-sm text-ink-muted">With the exam timetable. Print it, or show it on the phone if the school allows.</p>
+          <div className="flex flex-wrap gap-2">{tickets.data!.map((t) => {
+            const f = `hall-ticket-${t.code}-${name.replace(/\s+/g, '-')}.pdf`;
+            const open = (share: boolean) => openPdf(`/students/${studentId}/hall-ticket.pdf?examId=${t.examId}`, f, share).catch((e) => toast.error(e.message));
+            return (
+              <span key={t.examId} className="flex gap-2">
+                <button className="btn-quiet" onClick={() => open(false)}><FileText size={16} aria-hidden />{t.name}</button>
+                {family && typeof navigator.share === 'function' && <button className="btn-quiet" aria-label={`Share ${t.name} hall ticket`} onClick={() => open(true)}><Share2 size={16} aria-hidden /></button>}
+              </span>);
+          })}</div>
         </section>
       )}
       <div className="flex flex-wrap gap-2">

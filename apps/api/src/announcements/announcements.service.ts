@@ -110,16 +110,16 @@ export class AnnouncementsService {
     const link = `/announcements#${id}`;
     let total = 0;
     if (a.type === 'all' || a.type === 'staff') {
-      const r = await sql`INSERT INTO notifications (user_id, workspace, category, title, body, link_path)
-        SELECT u.id, 'staff', 'communication', ${title}, ${preview}, ${link}
+      const r = await sql`INSERT INTO notifications (user_id, workspace, category, push_group, title, body, link_path)
+        SELECT u.id, 'staff', 'communication', 'notices', ${title}, ${preview}, ${link}
         FROM users u JOIN staff s ON s.user_id = u.id WHERE u.status = 'active' AND s.status = 'active'`.execute(trx);
       total += Number(r.numAffectedRows ?? 0);
     }
     if (a.type !== 'staff') {
       const where = a.type === 'sections' ? sql`AND e.section_id IN (${sql.join(a.ids)})`
         : a.type === 'classes' ? sql`AND e.class_id IN (${sql.join(a.ids)})` : sql``;
-      const r = await sql`INSERT INTO notifications (user_id, workspace, category, title, body, link_path)
-        SELECT DISTINCT f.user_id, 'parent', 'communication', ${title}, ${preview}, ${link}
+      const r = await sql`INSERT INTO notifications (user_id, workspace, category, push_group, title, body, link_path)
+        SELECT DISTINCT f.user_id, 'parent', 'communication', 'notices', ${title}, ${preview}, ${link}
         FROM families f JOIN students s ON s.family_id = f.id AND s.status = 'active'
         JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${year.id}
         JOIN users u ON u.id = f.user_id AND u.status = 'active'

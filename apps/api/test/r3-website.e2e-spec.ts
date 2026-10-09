@@ -120,13 +120,13 @@ describe('Public website (e2e)', () => {
     expect(bad.body.code).toBe('VALIDATION_FAILED');
     const r = await http.post('/api/v1/public/contact').send({ name: 'Ravi Kumar', mobile: '98765 43210', message: 'Is admission open for Class 3?' });
     expect(r.body.data.whatsappUrl).toMatch(/^https:\/\/wa\.me\/919876500000\?text=Hello%20Test%20School/);
-    const msg = (await as(dev).get('/api/v1/cms/messages')).body.data[0];
+    const msg = (await as(dev).get('/api/v1/enquiries')).body.data.rows[0];
     expect(msg).toMatchObject({ name: 'Ravi Kumar', mobile: '9876543210', status: 'new' });
     const mail = await db.selectFrom('email_outbox').selectAll().where('template_key', '=', 'contact_message').orderBy('id', 'desc').executeTakeFirstOrThrow();
     expect(mail.to_email).toBe('office@test.school');
-    const before = (await as(dev).get('/api/v1/cms/messages')).body.data.length;
+    const before = (await as(dev).get('/api/v1/enquiries')).body.data.rows.length;
     await http.post('/api/v1/public/contact').send({ name: 'Bot', message: 'Buy cheap stuff now', website: 'http://spam' });
-    expect((await as(dev).get('/api/v1/cms/messages')).body.data.length).toBe(before);
+    expect((await as(dev).get('/api/v1/enquiries')).body.data.rows.length).toBe(before);
   });
 
   it('shows only notices marked for the website', async () => {

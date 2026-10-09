@@ -9,11 +9,13 @@ export const MODULE_LABEL: Record<string, string> = {
   settings: 'School settings', users: 'Logins', roles: 'Roles & year end', audit: 'Audit', academics: 'Classes & teachers', students: 'Students', families: 'Parents',
   staff: 'Staff', announcements: 'Notices', fees: 'Fees', payments: 'Fee receipts', attendance: 'Attendance', timetable: 'Timetable', exams: 'Exams', marks: 'Marks',
   cms: 'Website', reports: 'Reports & downloads', imports: 'Bulk import', hr: 'HR records', payroll: 'Payroll', expenses: 'Expenses', transport: 'Transport', inventory: 'Stock & sales',
+  homework: 'Homework & diary', enquiries: 'Admission enquiries',
 };
 export const ACTION_LABEL: Record<string, string> = {
   view: 'View', create: 'Add', edit: 'Edit', deactivate: 'Make inactive / leaving', import: 'Import from Excel', export: 'Download lists', configure: 'Set up',
   discount: 'Give discounts and waivers', collect: 'Collect fees', void: 'Void receipts', mark: 'Mark', enter: 'Enter', approve: 'Approve', publish: 'Publish', manage: 'Manage',
   finalise: 'Finalise', run: 'Run imports', issue_credentials: 'Send login details', disable: 'Turn logins on or off', log: 'Log fuel and service', sell: 'Sell at the counter',
+  post: 'Post', photo: 'Take or upload photos',
 };
 export const SCOPE_LABEL: Record<Scope, string> = {
   all: "Everyone's records", section: 'Their class-teacher sections', class: 'Their class-teacher classes', subject: 'Sections they teach', assigned_students: 'Students they teach',
@@ -24,7 +26,7 @@ export const LEVEL_LABEL: Record<Exclude<Level, 'custom'>, string> = { none: 'No
 export const WS_LABEL: Record<Workspace, string> = { staff: 'Staff', parent: 'Parents', student: 'Students' };
 
 /** Modules where "whose records" matters (people's data); elsewhere access is simply on or off. */
-export const SCOPED_MODULES = new Set(['students', 'families', 'attendance', 'marks', 'timetable', 'announcements', 'transport', 'fees', 'payments', 'exams']);
+export const SCOPED_MODULES = new Set(['students', 'families', 'attendance', 'marks', 'timetable', 'announcements', 'transport', 'fees', 'payments', 'exams', 'homework']);
 
 export const moduleLabel = (k: string) => MODULE_LABEL[k] ?? k;
 export const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replace(/_/g, ' ');

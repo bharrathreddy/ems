@@ -31,6 +31,10 @@ import StockPage from './pages/StockPage';
 import SalesPage from './pages/SalesPage';
 import { ActivityPage, LoginAsPage } from './pages/DeveloperToolsPage';
 import AccessPage from './pages/AccessPage';
+import HomeworkPage from './pages/HomeworkPage';
+import EnquiriesPage from './pages/EnquiriesPage';
+import ClassPhotosPage from './pages/ClassPhotosPage';
+import HallTicketsPage from './pages/HallTicketsPage';
 import ExpensesPage from './pages/ExpensesPage';
 import MyPayslipsPage from './pages/MyPayslipsPage';
 import LeavingStudentsPage from './pages/LeavingStudentsPage';
@@ -43,7 +47,7 @@ const PAGES: Record<string, () => React.JSX.Element> = {
   '/students': StudentsPage, '/imports': ImportsPage, '/announcements': AnnouncementsPage,
   '/teaching': TeachingPage, '/timetable': TimetablePage, '/website': WebsitePage, '/attendance': AttendancePage, '/exams': ExamsPage,
   '/fees/collect': CollectPage, '/fees/dues': DuesPage, '/fees/receipts': ReceiptsPage, '/fees/setup': FeeSetupPage,
-  '/payroll': PayrollPage, '/expenses': ExpensesPage, '/payslips': MyPayslipsPage, '/transport': TransportPage, '/stock': StockPage, '/sales': SalesPage, '/login-as': LoginAsPage, '/access': AccessPage, '/activity': ActivityPage,
+  '/payroll': PayrollPage, '/expenses': ExpensesPage, '/payslips': MyPayslipsPage, '/transport': TransportPage, '/stock': StockPage, '/sales': SalesPage, '/login-as': LoginAsPage, '/access': AccessPage, '/activity': ActivityPage, '/homework': HomeworkPage, '/hall-tickets': HallTicketsPage, '/enquiries': EnquiriesPage,
 };
 
 export default function App() {
@@ -71,6 +75,7 @@ export default function App() {
           const Page = PAGES[n.to];
           return <Route key={`${n.to}-${n.label}`} path={n.to} element={<Page />} />;
         })}
+        {auth.me?.workspace === 'staff' && (auth.can('students.photo') || auth.can('students.edit')) && <Route path="/students/photos" element={<ClassPhotosPage />} />}
         {auth.can('students.view') && <Route path="/students/:id" element={<Student360Page />} />}
         {auth.can('timetable.manage') && <Route path="/timetable/setup" element={<TimetableSetupPage />} />}
         {yearEndAllowed(auth) && <><Route path="/year-end" element={<YearEndPage />} /><Route path="/year-end/section/:id" element={<SectionRoute />} /><Route path="/year-end/rolls" element={<RollsPage />} /></>}

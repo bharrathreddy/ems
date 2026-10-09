@@ -45,8 +45,8 @@ export default function DuesPage() {
   const query = { classId, sectionId, overdueOnly: overdueOnly ? '1' : undefined, search: term };
   const q = useQuery({ queryKey: ['dues', query], queryFn: () => api<{ academicYear: string; students: number; total: number; rows: DueRow[] }>('/fees/reports/outstanding', { query }).then((r) => r.data) });
   const sections = classes.data?.find((c) => String(c.id) === classId)?.sections ?? [];
-  const email = useMutation({ mutationFn: (id: string) => api<{ sentTo: string }>(`/students/${id}/fee-reminder`, { method: 'POST' }),
-    onSuccess: ({ data }) => toast.success(`Reminder emailed to ${data.sentTo}`), onError: (e) => toast.error((e as ApiError).message, { duration: 7000 }) });
+  const email = useMutation({ mutationFn: (id: string) => api<{ sentTo: string; appAlert?: boolean }>(`/students/${id}/fee-reminder`, { method: 'POST' }),
+    onSuccess: ({ data }) => toast.success(data.sentTo === 'the parent app' ? 'Reminder sent to the parent app' : `Reminder emailed to ${data.sentTo}${data.appAlert ? ' and sent to the parent app' : ''}`), onError: (e) => toast.error((e as ApiError).message, { duration: 7000 }) });
   const remind = (r: DueRow) => {
     const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
     const text = `Dear Parent, this is a gentle reminder from ${branding?.name ?? 'the school'}. Fees of ${inr(r.total)} are due for ${name} (${r.class_name ?? ''} ${r.section_name ?? ''})${r.overdue > 0 ? `, of which ${inr(r.overdue)} is past the due date` : ''}. Please pay at the school office. Thank you.`;

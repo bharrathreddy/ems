@@ -17,6 +17,14 @@ export const WORKSPACE_SCOPES: Record<Workspace, Scope[]> = {
   student: ['own_records'],
 };
 
+/** Student-record fields a role can be kept from seeing (enforced in the students screens and lists). */
+export const FIELD_RULES = [
+  { key: 'family.mobile', label: "Parents' phone & email" },
+  { key: 'family.address', label: "Parents' address" },
+  { key: 'address', label: "Student's address" },
+] as const;
+export type FieldRules = Record<string, 'hidden' | 'view'>;
+
 @Injectable()
 export class AccessService {
   constructor(@Inject(KYSELY) private readonly db: Database, private readonly audit: AuditService, private readonly perms: PermissionsService) {}
@@ -39,14 +47,17 @@ export class AccessService {
     const modules = Object.entries(PERMISSION_CATALOG).map(([key, actions]) => ({ key, actions, core: CORE_MODULES.has(key), enabled: CORE_MODULES.has(key) || flags.get(key) === true }));
     const roles = await this.db.selectFrom('roles').select(['id', 'role_key', 'name', 'description', 'workspace', 'is_system', 'is_active']).orderBy('workspace').orderBy('is_system', 'desc').orderBy('name').execute();
     const grants = await this.db.selectFrom('role_permissions as rp').innerJoin('permissions as p', 'p.id', 'rp.permission_id').select(['rp.role_id', 'p.module_key', 'p.action', 'rp.scope']).execute();
+    const fields = await this.db.selectFrom('field_policies').select(['role_id', 'field_key', 'access']).where('entity', '=', 'student')
+      .where('field_key', 'in', FIELD_RULES.map((f) => f.key)).execute();
     const counts = await this.db.selectFrom('user_roles as ur').innerJoin('users as u', 'u.id', 'ur.user_id').select(['ur.role_id', (eb) => eb.fn.countAll<number>().as('n')])
       .where('u.status', '=', 'active').groupBy('ur.role_id').execute();
     return {
-      modules, scopes: WORKSPACE_SCOPES,
+      modules, scopes: WORKSPACE_SCOPES, fieldRules: FIELD_RULES,
       roles: roles.map((r) => ({
         id: r.id, key: r.role_key, name: r.name, description: r.description, workspace: r.workspace, isSystem: !!r.is_system, isActive: !!r.is_active,
         people: Number(counts.find((c) => c.role_id === r.id)?.n ?? 0),
         grants: Object.fromEntries(grants.filter((g) => g.role_id === r.id).map((g) => [`${g.module_key}.${g.action}`, g.scope])),
+        fields: Object.fromEntries(FIELD_RULES.map((f) => [f.key, fields.find((x) => x.role_id === r.id && x.field_key === f.key)?.access === 'hidden' ? 'hidden' : 'view'])) as FieldRules,
       })),
     };
   }
@@ -55,11 +66,13 @@ export class AccessService {
     if (await this.db.selectFrom('roles').select('id').where('name', '=', b.name).executeTakeFirst()) throw Errors.validation([{ field: 'name', message: 'A role with this name already exists.' }]);
     let workspace = b.workspace;
     let copy: Array<{ permission_id: number; scope: Scope }> = [];
+    let copyFields: Array<{ entity: string; field_key: string; access: 'hidden' | 'view' | 'edit' }> = [];
     if (b.copyFrom) {
       const src = await this.db.selectFrom('roles').select(['id', 'workspace']).where('id', '=', b.copyFrom).executeTakeFirst();
       if (!src) throw Errors.validation([{ field: 'copyFrom', message: 'Choose a role to copy.' }]);
       workspace = src.workspace;
       copy = await this.db.selectFrom('role_permissions').select(['permission_id', 'scope']).where('role_id', '=', src.id).execute();
+      copyFields = await this.db.selectFrom('field_policies').select(['entity', 'field_key', 'access']).where('role_id', '=', src.id).execute();
     }
     const base = b.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'role';
     let key = `custom_${base}`;
@@ -67,6 +80,7 @@ export class AccessService {
     const id = await this.db.transaction().execute(async (trx) => {
       const rid = Number((await trx.insertInto('roles').values({ role_key: key, name: b.name, description: b.description ?? null, workspace, is_system: 0 }).executeTakeFirstOrThrow()).insertId);
       if (copy.length) await trx.insertInto('role_permissions').values(copy.map((c) => ({ role_id: rid, permission_id: c.permission_id, scope: c.scope }))).execute();
+      if (copyFields.length) await trx.insertInto('field_policies').values(copyFields.map((f) => ({ role_id: rid, ...f }))).execute();
       await this.audit.log(u, { module: 'roles', action: 'create', entityType: 'role', entityId: rid, after: { name: b.name, workspace, copiedFrom: b.copyFrom ?? null }, ...meta }, trx);
       return rid;
     });
@@ -97,6 +111,24 @@ export class AccessService {
   }
 
   /** Replaces everything a role may do. */
+  /** Which student-record fields a staff role sees. Stored explicitly (view or hidden) so restarts never change them. */
+  async setFields(u: RequestUser, id: number, rules: FieldRules, meta: Meta) {
+    const r = await this.db.selectFrom('roles').select(['id', 'workspace']).where('id', '=', id).executeTakeFirst();
+    if (!r) throw Errors.notFound('Role');
+    if (r.workspace !== 'staff') throw Errors.badRequest('STAFF_ONLY', 'Field rules apply to staff roles. Parents and students only see their own records.');
+    const known = new Set<string>(FIELD_RULES.map((f) => f.key));
+    const bad = Object.keys(rules).find((k) => !known.has(k));
+    if (bad) throw Errors.validation([{ field: 'fields', message: `Unknown field: ${bad}` }]);
+    const before = Object.fromEntries((await this.db.selectFrom('field_policies').select(['field_key', 'access']).where('role_id', '=', id).where('entity', '=', 'student').execute()).map((f) => [f.field_key, f.access]));
+    await this.db.transaction().execute(async (trx) => {
+      for (const [field_key, access] of Object.entries(rules)) {
+        await trx.insertInto('field_policies').values({ role_id: id, entity: 'student', field_key, access }).onDuplicateKeyUpdate({ access }).execute();
+      }
+      await this.audit.log(u, { module: 'roles', action: 'set_fields', entityType: 'role', entityId: id, before, after: rules, ...meta }, trx);
+    });
+    return this.overview();
+  }
+
   async setGrants(u: RequestUser, id: number, grants: Grants, meta: Meta) {
     const r = await this.db.selectFrom('roles').select(['id', 'name', 'workspace']).where('id', '=', id).executeTakeFirst();
     if (!r) throw Errors.notFound('Role');

@@ -106,6 +106,18 @@ export async function uploadFile<T>(path: string, file: File, retried = false): 
   return { data: json.data as T };
 }
 
+/** Posts form fields with an optional file (multipart/form-data). */
+export async function postForm<T>(path: string, fields: Record<string, string | number | null | undefined>, file?: File | null, retried = false): Promise<{ data: T }> {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) if (v !== undefined && v !== null && v !== '') fd.append(k, String(v));
+  if (file) fd.append('file', file);
+  const res = await fetch(`/api/v1${path}`, { method: 'POST', body: fd, headers: authHeaders(), credentials: 'include' });
+  if (res.status === 401 && !retried && (await refreshAccessToken())) return postForm<T>(path, fields, file, true);
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new ApiError(res.status, json?.code ?? 'NETWORK', json?.message ?? 'Could not save.', json?.details);
+  return { data: json.data as T };
+}
+
 export const HIDDEN = '__hidden__';
 /** Displays a value that may be hidden by field permissions. */
 export const shown = (v: unknown, empty = '-') => (v === HIDDEN ? 'Hidden' : v === null || v === undefined || v === '' ? empty : String(v));
