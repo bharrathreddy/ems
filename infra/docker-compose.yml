@@ -1,0 +1,29 @@
+# Optional VPS setup (one school per server). Not needed on Hostinger Business/Cloud hosting.
+#   cp .env.production.example .env.production   (fill it in)
+#   docker compose --env-file .env.production up -d --build
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ems
+      MYSQL_USER: ems
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: [mysql_data:/var/lib/mysql]
+    healthcheck: { test: ["CMD", "mysqladmin", "ping", "-h", "localhost"], interval: 10s, retries: 10 }
+  app:
+    build: { context: .., dockerfile: infra/Dockerfile }
+    restart: unless-stopped
+    env_file: .env.production
+    environment: { DB_HOST: mysql, DB_PORT: "3306", DB_NAME: ems, DB_USER: ems }
+    depends_on: { mysql: { condition: service_healthy } }
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment: { SITE_DOMAIN: "${SITE_DOMAIN}" }
+    ports: ["80:80", "443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
+    depends_on: [app]
+volumes: { mysql_data: {}, caddy_data: {} }

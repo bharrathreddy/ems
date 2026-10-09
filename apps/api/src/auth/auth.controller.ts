@@ -1,0 +1,127 @@
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
+import { z } from 'zod';
+import { config } from '../config';
+import { KYSELY, type Database } from '../database/database.module';
+import { Errors } from '../common/app-error';
+import { ZodPipe } from '../common/zod.pipe';
+import { AllowPendingPassword, clientMeta, CurrentUser, Public, type AppRequest, type RequestUser } from '../common/request-user';
+import { PermissionsService } from '../permissions/permissions.service';
+import { AuthService } from './auth.service';
+import { passwordPolicy } from './passwords';
+
+const REFRESH_COOKIE = 'ems_rt';
+const COOKIE_PATH = '/api/v1/auth';
+
+const LoginBody = z.object({ identifier: z.string().trim().min(3).max(190), password: z.string().min(1).max(128) });
+const RefreshBody = z.object({ refreshToken: z.string().optional() }).default({});
+const ChangePasswordBody = z.object({ currentPassword: z.string().min(1), newPassword: passwordPolicy });
+const ForgotBody = z.object({ email: z.string().trim().email() });
+const ResetBody = z.object({ token: z.string().min(10), newPassword: passwordPolicy });
+
+@ApiTags('Auth')
+@Controller('auth')
+export class AuthController {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly perms: PermissionsService,
+    @Inject(KYSELY) private readonly db: Database,
+  ) {}
+
+  /** Web: refresh token goes in an httpOnly cookie. Mobile apps send `X-Client: mobile` and get it in the body. */
+  private deliverTokens(req: AppRequest, res: Response, t: { accessToken: string; refreshToken: string; refreshExpiresAt: Date; expiresIn: number }) {
+    const isMobile = req.headers['x-client'] === 'mobile';
+    if (!isMobile) {
+      res.cookie(REFRESH_COOKIE, t.refreshToken, {
+        httpOnly: true, secure: config.cookieSecure, sameSite: 'lax', path: COOKIE_PATH, expires: t.refreshExpiresAt,
+      });
+    }
+    return { accessToken: t.accessToken, expiresIn: t.expiresIn, ...(isMobile ? { refreshToken: t.refreshToken } : {}) };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('login')
+  @HttpCode(200)
+  async login(@Body(new ZodPipe(LoginBody)) body: z.infer<typeof LoginBody>, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    const r = await this.auth.login(body.identifier, body.password, clientMeta(req));
+    return { ...this.deliverTokens(req, res, r), mustChangePassword: r.mustChangePassword, workspaces: r.workspaces };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('refresh')
+  @HttpCode(200)
+  async refresh(@Body(new ZodPipe(RefreshBody)) body: z.infer<typeof RefreshBody>, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    const token = body.refreshToken ?? req.cookies?.[REFRESH_COOKIE];
+    if (!token) throw Errors.unauthenticated();
+    return this.deliverTokens(req, res, await this.auth.refresh(token, clientMeta(req)));
+  }
+
+  @ApiBearerAuth()
+  @AllowPendingPassword()
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@CurrentUser() user: RequestUser, @Res({ passthrough: true }) res: Response) {
+    await this.auth.logout(user.sessionId);
+    res.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });
+    return { loggedOut: true };
+  }
+
+  @ApiBearerAuth()
+  @Post('logout-all')
+  @HttpCode(200)
+  async logoutAll(@CurrentUser() user: RequestUser, @Res({ passthrough: true }) res: Response) {
+    await this.auth.revokeAll(user.id);
+    res.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });
+    return { loggedOut: true };
+  }
+
+  @ApiBearerAuth()
+  @AllowPendingPassword()
+  @Post('change-password')
+  @HttpCode(200)
+  async changePassword(@CurrentUser() user: RequestUser, @Body(new ZodPipe(ChangePasswordBody)) body: z.infer<typeof ChangePasswordBody>, @Req() req: AppRequest) {
+    await this.auth.changePassword(user, body.currentPassword, body.newPassword, clientMeta(req));
+    return { changed: true };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgot(@Body(new ZodPipe(ForgotBody)) body: z.infer<typeof ForgotBody>) {
+    await this.auth.forgotPassword(body.email);
+    return { message: 'If an account uses this email, a reset link has been sent.' };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(200)
+  async reset(@Body(new ZodPipe(ResetBody)) body: z.infer<typeof ResetBody>, @Req() req: AppRequest) {
+    await this.auth.resetPassword(body.token, body.newPassword, clientMeta(req));
+    return { reset: true };
+  }
+
+  /** Everything the app needs after login: who, which workspace, what they may do, which modules are on. */
+  @ApiBearerAuth()
+  @AllowPendingPassword()
+  @Get('me')
+  async me(@CurrentUser() user: RequestUser) {
+    const [profile, flags] = await Promise.all([
+      this.db.selectFrom('users').select(['public_id', 'name', 'email', 'mobile']).where('id', '=', user.id).executeTakeFirstOrThrow(),
+      this.perms.featureFlags(),
+    ]);
+    return {
+      user: { id: profile.public_id, name: profile.name, email: profile.email, mobile: profile.mobile, isSuperAdmin: user.isSuperAdmin },
+      mustChangePassword: user.mustChangePassword,
+      workspace: user.workspace,
+      workspaces: user.workspaces,
+      permissions: Object.fromEntries(user.permissions),
+      features: Object.fromEntries(flags),
+    };
+  }
+}

@@ -1,0 +1,2 @@
+DejaVu Sans fonts: free license (Bitstream Vera / Arev derived). Redistribution and embedding permitted.
+See https://dejavu-fonts.github.io/License.html

@@ -1,0 +1,32 @@
+{
+  "name": "ems",
+  "private": true,
+  "version": "0.12.0",
+  "description": "Education Management System (single institute). Runs on XAMPP (MariaDB) locally and Hostinger Node.js hosting (MySQL/MariaDB).",
+  "workspaces": [
+    "apps/api",
+    "apps/admin"
+  ],
+  "scripts": {
+    "build": "npm run build -w @ems/admin && npm run build -w @ems/api",
+    "start": "node server.js",
+    "dev": "concurrently -n api,app -c green,blue \"npm run dev -w @ems/api\" \"npm run dev -w @ems/admin\"",
+    "db:migrate": "npm run db:migrate -w @ems/api",
+    "db:seed": "npm run db:seed -w @ems/api",
+    "test": "npm run test:e2e -w @ems/api",
+    "doctor": "node scripts/doctor.js",
+    "manifest": "node scripts/make-manifest.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "uuid": "^11.1.1",
+    "@nestjs/swagger": {
+      "js-yaml": "^5.4.3"
+    }
+  }
+}

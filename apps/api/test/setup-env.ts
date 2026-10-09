@@ -1,0 +1,9 @@
+process.env.NODE_ENV = 'test';
+process.env.MAIL_WORKER = 'off';
+process.env.DB_HOST = process.env.TEST_DB_HOST ?? 'localhost';
+process.env.DB_PORT = process.env.TEST_DB_PORT ?? '3306';
+process.env.DB_USER = process.env.TEST_DB_USER ?? 'ems';
+process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD ?? 'ems_password';
+process.env.DB_NAME = process.env.TEST_DB_NAME ?? 'ems_test';
+process.env.JWT_ACCESS_SECRET = 'test-secret-test-secret-test-secret';
+process.env.APP_URL = 'http://localhost:5173';
