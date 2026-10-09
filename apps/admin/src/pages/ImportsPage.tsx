@@ -14,13 +14,13 @@ interface Result {
   summary: Record<string, number>;
 }
 const TYPES: Record<ImportType, { title: string; body: string; perm: string; file: string }> = {
-  families_students: { title: 'Students and families', body: 'One row per student. Brothers and sisters with the same family mobile become one family with one login.', perm: 'students.import', file: 'families-students-template.xlsx' },
+  families_students: { title: 'Students and parents', body: 'One row per student. Brothers and sisters with the same parent mobile share one parent login.', perm: 'students.import', file: 'families-students-template.xlsx' },
   staff: { title: 'Staff', body: 'One row per staff member, with their roles.', perm: 'staff.import', file: 'staff-template.xlsx' },
   opening_fees: { title: 'Opening fee balances', body: 'Starting mid-year? Plan, discounts and what each student already paid this year.', perm: 'payments.collect', file: 'opening-fee-balances-template.xlsx' },
 };
 const SUMMARY_LABEL: Record<string, string> = {
-  students: 'students', newFamilies: 'new families', existingFamilies: 'existing families', staffFamilies: 'families linked to staff',
-  staff: 'staff members', linkedToFamilies: 'linked to existing family logins',
+  students: 'students', newFamilies: 'new parents', existingFamilies: 'existing parents', staffFamilies: 'parents linked to staff',
+  staff: 'staff members', linkedToFamilies: 'linked to existing parent logins',
   withPayments: 'with earlier payments', tuitionPaid: 'rupees tuition already paid', busPaid: 'rupees bus fee already paid',
 };
 

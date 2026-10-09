@@ -28,7 +28,7 @@ export class JwtAuthGuard implements CanActivate {
     const requested = (req.headers['x-workspace'] as string | undefined)?.trim() || undefined;
     req.user = await this.auth.resolveRequestUser(payload.sub, payload.sid, requested);
 
-    if (req.user.mustChangePassword && !this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_PASSWORD, targets)) {
+    if (req.user.mustChangePassword && !req.user.actingUserId && !this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_PASSWORD, targets)) {
       throw Errors.passwordChangeRequired();
     }
     return true;

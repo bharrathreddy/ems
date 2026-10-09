@@ -5,6 +5,8 @@ import type { Scope, Workspace } from '../common/request-user';
 import { CORE_MODULES, PERMISSION_CATALOG, SCOPE_RANK } from './catalog';
 
 const CACHE_MS = 60_000;
+/** The natural scope of each workspace when none is chosen. */
+export const DEFAULT_SCOPE: Record<Workspace, Scope> = { staff: 'all', parent: 'own_children', student: 'own_records' };
 
 @Injectable()
 export class PermissionsService {
@@ -70,6 +72,14 @@ export class PermissionsService {
       const k = `${r.module_key}.${r.action}`;
       const prev = perms.get(k);
       if (!prev || SCOPE_RANK[r.scope] > SCOPE_RANK[prev]) perms.set(k, r.scope);
+    }
+    // Per-person exceptions set by the developer: grants add (or widen), denies remove.
+    const overrides = await this.db.selectFrom('user_permission_overrides as o').innerJoin('permissions as p', 'p.id', 'o.permission_id')
+      .select(['p.module_key', 'p.action', 'o.effect', 'o.scope']).where('o.user_id', '=', userId).where('o.workspace', '=', workspace).execute();
+    for (const o of overrides) {
+      const k = `${o.module_key}.${o.action}`;
+      if (o.effect === 'deny') perms.delete(k);
+      else perms.set(k, o.scope ?? DEFAULT_SCOPE[workspace]);
     }
     this.permCache.set(key, { at: Date.now(), perms });
     return perms;

@@ -38,18 +38,18 @@ What the school wants every student to become.
 ## Mission
 - How the school teaches
 - What it values
-- How it works with families` },
+- How it works with parents` },
   { slug: 'contact', kind: 'contact' as const, title: 'Contact us', body: null },
   { slug: 'privacy', kind: 'privacy' as const, title: 'Privacy policy', body:
 `This policy explains how the school uses information on this website and in the school app. Please review it and change it to match your school.
 
 ## What we collect
 - Messages you send through the contact form (name, mobile number and message)
-- Student and family details provided at admission, used to run the school
+- Student and parent details provided at admission, used to run the school
 
 ## How we use it
 - To reply to your enquiry
-- To manage admissions, fees, attendance and communication with families
+- To manage admissions, fees, attendance and communication with parents
 
 ## Sharing
 We do not sell personal information. We share it only when required by law or education authorities.

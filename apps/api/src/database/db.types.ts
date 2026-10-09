@@ -55,6 +55,7 @@ export interface AttendanceDays {
 }
 
 export interface AuditLogs {
+  acting_user_id: Generated<number | null>;
   action: string;
   after_data: Generated<string | null>;
   before_data: Generated<string | null>;
@@ -869,6 +870,7 @@ export interface Sessions {
   device_label: Generated<string | null>;
   expires_at: Date;
   id: Generated<number>;
+  impersonator_id: Generated<number | null>;
   ip_address: Generated<string | null>;
   last_used_at: Generated<Date | null>;
   refresh_token_hash: string;
@@ -1101,6 +1103,16 @@ export interface TimetableSlots {
   updated_by: Generated<number | null>;
 }
 
+export interface UserPermissionOverrides {
+  created_at: Generated<Date>;
+  created_by: Generated<number | null>;
+  effect: "deny" | "grant";
+  permission_id: number;
+  scope: Generated<"all" | "assigned_route" | "assigned_students" | "class" | "own_children" | "own_records" | "section" | "subject" | null>;
+  user_id: number;
+  workspace: "parent" | "staff" | "student";
+}
+
 export interface UserRoles {
   assigned_by: Generated<number | null>;
   created_at: Generated<Date>;
@@ -1262,6 +1274,7 @@ export interface DB {
   teacher_assignments: TeacherAssignments;
   term_remarks: TermRemarks;
   timetable_slots: TimetableSlots;
+  user_permission_overrides: UserPermissionOverrides;
   user_roles: UserRoles;
   users: Users;
   vehicle_logs: VehicleLogs;

@@ -102,18 +102,18 @@ function EditFamilySheet({ s, open, onClose }: { s: Student360; open: boolean; o
   const set = (k: keyof ReturnType<typeof init>) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const m = useMutation({
     mutationFn: () => api(`/families/${s.family_id}`, { method: 'PATCH', body: { ...f, fatherName: f.fatherName || null, motherName: f.motherName || null, altMobile: f.altMobile || null, email: f.email || null, address: f.address || null } }),
-    onSuccess: () => { toast.success('Family updated'); qc.invalidateQueries({ queryKey: ['student'] }); qc.invalidateQueries({ queryKey: ['students'] }); onClose(); },
+    onSuccess: () => { toast.success('Parent details updated'); qc.invalidateQueries({ queryKey: ['student'] }); qc.invalidateQueries({ queryKey: ['students'] }); onClose(); },
     onError: (e) => { const fe = fieldErrors(e); setErrors(Object.keys(fe).length ? fe : { form: (e as ApiError).message }); },
   });
   return (
-    <Sheet open={open} onClose={onClose} title="Edit family" footer={<button form="edit-family" className="btn-primary w-full" disabled={m.isPending}>{m.isPending ? 'Saving…' : 'Save family'}</button>}>
+    <Sheet open={open} onClose={onClose} title="Edit parents" footer={<button form="edit-family" className="btn-primary w-full" disabled={m.isPending}>{m.isPending ? 'Saving…' : 'Save'}</button>}>
       <form id="edit-family" className="space-y-4" onSubmit={(e: FormEvent) => { e.preventDefault(); setErrors({}); m.mutate(); }}>
-        <Field label="Family name" error={errors.familyName}><input className="field" value={f.familyName} onChange={set('familyName')} /></Field>
+        <Field label="Account name" error={errors.familyName}><input className="field" value={f.familyName} onChange={set('familyName')} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Father's name"><input className="field" value={f.fatherName} onChange={set('fatherName')} /></Field>
           <Field label="Mother's name"><input className="field" value={f.motherName} onChange={set('motherName')} /></Field>
         </div>
-        <Field label="Family mobile (login)" error={errors.mobile} hint="Changing it changes the family's login username."><input className="field" inputMode="tel" value={f.mobile} onChange={set('mobile')} /></Field>
+        <Field label="Parent mobile (login)" error={errors.mobile} hint="Changing it changes the parent's login username."><input className="field" inputMode="tel" value={f.mobile} onChange={set('mobile')} /></Field>
         <Field label="Alternate mobile" error={errors.altMobile}><input className="field" inputMode="tel" value={f.altMobile} onChange={set('altMobile')} /></Field>
         <Field label="Email" error={errors.email}><input className="field" type="email" value={f.email} onChange={set('email')} /></Field>
         <Field label="Address"><input className="field" value={f.address} onChange={set('address')} /></Field>
@@ -140,8 +140,8 @@ export default function Student360Page() {
     mutationFn: (v: { active: boolean; reason?: string }) => api<Student360 & { family_login_change: string | null }>(`/students/${id}/${v.active ? 'activate' : 'deactivate'}`, { method: 'POST', body: { reason: v.reason ?? null } }),
     onSuccess: ({ data }) => {
       toast.success(data.status === 'active' ? 'Student is active again' : 'Student marked inactive');
-      if (data.family_login_change === 'auto_disabled') toast.info('The family login was turned off because no child is active.');
-      if (data.family_login_change === 'active') toast.info('The family login is on again.');
+      if (data.family_login_change === 'auto_disabled') toast.info('The parent login was turned off because no child is active.');
+      if (data.family_login_change === 'active') toast.info('The parent login is on again.');
       qc.invalidateQueries({ queryKey: ['student', id] }); qc.invalidateQueries({ queryKey: ['students'] });
     },
     onError: (e) => toast.error((e as ApiError).message),
@@ -187,7 +187,7 @@ export default function Student360Page() {
       </header>
 
       <div className="-mx-4 mb-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0" role="tablist">
-        {([['overview', 'Overview'], ...(can('attendance.view') ? [['attendance', 'Attendance']] : []), ...(can('marks.view') ? [['marks', 'Marks']] : []), ...(can('timetable.view') ? [['timetable', 'Timetable']] : []), ...(can('fees.view') ? [['fees', 'Fees']] : []), ['family', 'Family'], ['history', 'History']] as Array<[typeof tab, string]>).map(([k, label]) => (
+        {([['overview', 'Overview'], ...(can('attendance.view') ? [['attendance', 'Attendance']] : []), ...(can('marks.view') ? [['marks', 'Marks']] : []), ...(can('timetable.view') ? [['timetable', 'Timetable']] : []), ...(can('fees.view') ? [['fees', 'Fees']] : []), ['family', 'Parents'], ['history', 'History']] as Array<[typeof tab, string]>).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={clsx('-mb-px shrink-0 border-b-2 px-4 py-2.5 text-[15px] font-semibold', tab === k ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink')}>{label}</button>
         ))}
@@ -223,11 +223,11 @@ export default function Student360Page() {
           </section>
           {staffView && (
             <section className="panel p-5">
-              <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-semibold">Family login</h2>{loginBadge}</div>
+              <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-semibold">Parent login</h2>{loginBadge}</div>
               {cred ? <CredentialsPanel c={cred} /> : (
                 <>
                   <p className="mb-3 text-sm text-ink-muted">
-                    {s.family_last_login ? `Last signed in ${new Date(s.family_last_login).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.` : 'One login for the whole family, using the family mobile.'}
+                    {s.family_last_login ? `Last signed in ${new Date(s.family_last_login).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.` : 'One parent login for all brothers and sisters, using the parent mobile.'}
                   </p>
                   {can('users.issue_credentials') && s.family_login_status === 'active' && (
                     <button className="btn-primary" onClick={() => issue.mutate()} disabled={issue.isPending}><KeyRound size={16} aria-hidden />{s.family_login_sent ? 'Send new login details' : 'Send login details'}</button>

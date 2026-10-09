@@ -10,9 +10,12 @@ import { ZodPipe } from '../common/zod.pipe';
 import { AllowPendingPassword, clientMeta, CurrentUser, Public, type AppRequest, type RequestUser } from '../common/request-user';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AuthService } from './auth.service';
+import { DeveloperOnly } from '../permissions/permission.guard';
 import { passwordPolicy } from './passwords';
 
 const REFRESH_COOKIE = 'ems_rt';
+/** While the developer uses "Login as", that session's refresh token lives in its own cookie, so the developer's own login is untouched. */
+const PROXY_COOKIE = 'ems_proxy_rt';
 const COOKIE_PATH = '/api/v1/auth';
 
 const LoginBody = z.object({ identifier: z.string().trim().min(3).max(190), password: z.string().min(1).max(128) });
@@ -31,10 +34,10 @@ export class AuthController {
   ) {}
 
   /** Web: refresh token goes in an httpOnly cookie. Mobile apps send `X-Client: mobile` and get it in the body. */
-  private deliverTokens(req: AppRequest, res: Response, t: { accessToken: string; refreshToken: string; refreshExpiresAt: Date; expiresIn: number }) {
+  private deliverTokens(req: AppRequest, res: Response, t: { accessToken: string; refreshToken: string; refreshExpiresAt: Date; expiresIn: number }, cookie = REFRESH_COOKIE) {
     const isMobile = req.headers['x-client'] === 'mobile';
     if (!isMobile) {
-      res.cookie(REFRESH_COOKIE, t.refreshToken, {
+      res.cookie(cookie, t.refreshToken, {
         httpOnly: true, secure: config.cookieSecure, sameSite: 'lax', path: COOKIE_PATH, expires: t.refreshExpiresAt,
       });
     }
@@ -55,18 +58,42 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Body(new ZodPipe(RefreshBody)) body: z.infer<typeof RefreshBody>, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
-    const token = body.refreshToken ?? req.cookies?.[REFRESH_COOKIE];
+    const proxy = req.headers['x-proxy'] === '1';
+    const token = body.refreshToken ?? req.cookies?.[proxy ? PROXY_COOKIE : REFRESH_COOKIE];
     if (!token) throw Errors.unauthenticated();
-    return this.deliverTokens(req, res, await this.auth.refresh(token, clientMeta(req)));
+    const t = await this.auth.refresh(token, clientMeta(req));
+    if (proxy !== t.proxy && !body.refreshToken) throw Errors.unauthenticated(); // each cookie only refreshes its own kind of session
+    return this.deliverTokens(req, res, t, t.proxy ? PROXY_COOKIE : REFRESH_COOKIE);
+  }
+
+  /** Developer only: open the app as another person (staff, parent, student, driver). */
+  @ApiBearerAuth()
+  @DeveloperOnly()
+  @Post('proxy')
+  @HttpCode(200)
+  async proxy(@CurrentUser() u: RequestUser, @Body(new ZodPipe(z.object({ userId: z.string().min(10).max(40) }))) b: { userId: string }, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    const t = await this.auth.startProxy(u, b.userId, clientMeta(req));
+    return { ...this.deliverTokens(req, res, t, PROXY_COOKIE), name: t.name, workspaces: t.workspaces };
+  }
+
+  /** Back to the developer's own login. */
+  @ApiBearerAuth()
+  @AllowPendingPassword()
+  @Post('proxy/end')
+  @HttpCode(200)
+  async endProxy(@CurrentUser() u: RequestUser, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    await this.auth.endProxy(u, clientMeta(req));
+    res.clearCookie(PROXY_COOKIE, { path: COOKIE_PATH });
+    return { ended: true };
   }
 
   @ApiBearerAuth()
   @AllowPendingPassword()
   @Post('logout')
   @HttpCode(200)
-  async logout(@CurrentUser() user: RequestUser, @Res({ passthrough: true }) res: Response) {
-    await this.auth.logout(user.sessionId);
-    res.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });
+  async logout(@CurrentUser() user: RequestUser, @Req() req: AppRequest, @Res({ passthrough: true }) res: Response) {
+    await this.auth.logout(user.sessionId, user, clientMeta(req));
+    res.clearCookie(user.actingUserId ? PROXY_COOKIE : REFRESH_COOKIE, { path: COOKIE_PATH });
     return { loggedOut: true };
   }
 
@@ -122,6 +149,7 @@ export class AuthController {
       workspaces: user.workspaces,
       permissions: Object.fromEntries(user.permissions),
       features: Object.fromEntries(flags),
+      proxy: user.actingUserId ? { by: user.actingName } : null,
     };
   }
 }

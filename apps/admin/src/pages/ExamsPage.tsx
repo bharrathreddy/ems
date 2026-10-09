@@ -90,7 +90,7 @@ function ApprovalsTab({ s }: { s: ExamSetup }) {
   const qc = useQueryClient();
   const [examId, setExamId] = useState<number | null>(s.exams[0]?.id ?? null);
   const q = useQuery({ queryKey: ['mark-sheets', examId], enabled: !!examId, queryFn: () => api<any>('/marks/sheets', { query: { examId: examId! } }).then((r) => r.data) });
-  const publish = useMutation({ mutationFn: (sectionId: number) => api(`/exams/${examId}/publish`, { method: 'POST', body: { sectionId } }), onSuccess: () => { toast.success('Published. Families are notified.'); qc.invalidateQueries({ queryKey: ['mark-sheets'] }); }, onError: err });
+  const publish = useMutation({ mutationFn: (sectionId: number) => api(`/exams/${examId}/publish`, { method: 'POST', body: { sectionId } }), onSuccess: () => { toast.success('Published. Parents are notified.'); qc.invalidateQueries({ queryKey: ['mark-sheets'] }); }, onError: err });
   const bySection = new Map<number, any[]>();
   for (const sh of q.data?.sheets ?? []) bySection.set(sh.sectionId, [...(bySection.get(sh.sectionId) ?? []), sh]);
   return (
@@ -102,7 +102,7 @@ function ApprovalsTab({ s }: { s: ExamSetup }) {
         return (
           <section key={sid} className="panel p-4">
             <div className="mb-2 flex flex-wrap items-center gap-2"><h3 className="flex-1 font-semibold">{list[0].section}</h3>
-              {published ? <Badge tone="brand">Published</Badge> : q.data.canPublish && <button className="btn-primary min-h-9 text-sm" disabled={!all || publish.isPending} title={all ? '' : 'Approve every subject first'} onClick={() => confirm(`Publish ${q.data.exam.code} results for ${list[0].section}? Families will be notified.`) && publish.mutate(sid)}>Publish</button>}</div>
+              {published ? <Badge tone="brand">Published</Badge> : q.data.canPublish && <button className="btn-primary min-h-9 text-sm" disabled={!all || publish.isPending} title={all ? '' : 'Approve every subject first'} onClick={() => confirm(`Publish ${q.data.exam.code} results for ${list[0].section}? Parents will be notified.`) && publish.mutate(sid)}>Publish</button>}</div>
             <ul className="divide-y divide-line">{list.map((x: any) => (
               <li key={x.subjectId}><Link to={`/marks/sheet?examId=${examId}&sectionId=${sid}&subjectId=${x.subjectId}`} className="flex items-center gap-3 py-2 hover:text-brand">
                 <span className="flex-1">{x.subject} <span className="text-sm text-ink-muted">· {x.teacher ?? 'No teacher'} · {x.entered}/{x.students}</span></span>
@@ -167,7 +167,7 @@ function SettingsTab({ s }: { s: ExamSetup }) {
     <div className="space-y-4">
       <section className="panel overflow-x-auto p-5">
         <h2 className="font-semibold">Result rules per class</h2>
-        <p className="mb-3 text-sm text-ink-muted">What families and the report card show, and how the final is worked out. Pre-primary classes use skills instead of marks.</p>
+        <p className="mb-3 text-sm text-ink-muted">What parents and the report card show, and how the final is worked out. Pre-primary classes use skills instead of marks.</p>
         <table className="w-full text-sm"><thead className="text-ink-muted"><tr><th className="py-2 pr-2 text-left font-medium">Class</th><th className="px-2 font-medium">Grade scale</th><th className="px-2 font-medium">Show</th><th className="px-2 font-medium">Final</th><th className="px-2 font-medium">FA weight %</th><th className="px-2 font-medium">Pass %</th></tr></thead>
           <tbody>{rules.map((c) => c.assessment === 'skills' ? (
             <tr key={c.id} className="border-t border-line"><td className="py-2 pr-2 font-medium">{c.name}</td><td colSpan={5} className="px-2 text-ink-muted">Skills report (Excellent / Good / Needs practice)</td></tr>

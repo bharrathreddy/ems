@@ -23,6 +23,7 @@ export class AuditService {
       .insertInto('audit_logs')
       .values({
         user_id: actor?.id ?? null,
+        acting_user_id: actor?.actingUserId ?? null,
         workspace: actor ? (actor.isSuperAdmin && actor.workspace === 'staff' ? 'developer' : actor.workspace) : 'system',
         module_key: e.module,
         action: e.action,

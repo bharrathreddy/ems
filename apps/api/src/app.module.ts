@@ -28,6 +28,8 @@ import { HrModule } from './hr/hr.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { TransportModule } from './transport/transport.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { ActivityModule } from './activity/activity.module';
+import { AccessModule } from './access/access.module';
 
 @Module({
   imports: [
@@ -37,7 +39,7 @@ import { InventoryModule } from './inventory/inventory.module';
     }),
     DatabaseModule, CommonModule, PermissionsModule, MailModule,
     AuthModule, StaffModule, AcademicsModule, SettingsModule,
-    StudentsModule, AnnouncementsModule, NotificationsModule, ImportsModule, FeesModule, TimetableModule, CmsModule, YearEndModule, AttendanceModule, DashboardModule, ExamsModule, ExportsModule, HrModule, PayrollModule, TransportModule, InventoryModule,
+    StudentsModule, AnnouncementsModule, NotificationsModule, ImportsModule, FeesModule, TimetableModule, CmsModule, YearEndModule, AttendanceModule, DashboardModule, ExamsModule, ExportsModule, HrModule, PayrollModule, TransportModule, InventoryModule, ActivityModule, AccessModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

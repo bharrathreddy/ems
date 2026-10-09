@@ -173,7 +173,7 @@ export default function Dashboard({ data, school }: { data: DashboardData; schoo
         {c.students != null && <Kpi icon={GraduationCap} label="Students" value={c.students} sub={c.boys || c.girls ? `${c.boys} boys · ${c.girls} girls` : undefined} to="/students" />}
         {c.staff != null && <Kpi icon={Users} label="Staff" value={c.staff} to="/staff" />}
         {c.newAdmissions != null && <Kpi icon={UserPlus} label="New admissions" value={c.newAdmissions} sub={data.year.name} />}
-        {c.families != null && <Kpi icon={Home} label="Families" value={c.families} sub={c.sections ? `${c.sections} sections` : undefined} />}
+        {c.families != null && <Kpi icon={Home} label="Parents" value={c.families} sub={c.sections ? `${c.sections} sections` : undefined} />}
         {data.attendance && <Kpi icon={UserCheck} label={data.ref === data.today ? 'Attendance today' : 'Attendance'} value={t?.percentage != null ? `${Math.round(t.percentage)}%` : '-'} sub={t?.working ? `${t.absent} absent` : t?.off ?? undefined} to="/attendance" tone={t?.percentage != null && t.percentage < 85 ? 'danger' : undefined} />}
         {data.finance && <Kpi icon={IndianRupee} label="Fees collected" value={compact(data.finance.collected)} sub={`${data.finance.collectedPct ?? 0}% of ${compact(data.finance.totalFee)}`} to="/fees/receipts" />}
       </div>

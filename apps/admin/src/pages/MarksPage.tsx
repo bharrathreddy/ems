@@ -109,7 +109,7 @@ function CorrectionSheet({ student, exam, examId, subjectId, onClose }: { studen
   return (
     <Sheet open={!!student} onClose={onClose} title={student ? `Correct ${student.name}'s mark` : ''} footer={<button className="btn-primary w-full" disabled={!v || reason.trim().length < 5 || m.isPending} onClick={() => m.mutate()}>Send for approval</button>}>
       {student && <div className="space-y-4">
-        <p>Now: <strong>{student.absent ? 'AB' : student.marks}</strong> out of {exam.maxMarks}. The family is told when the principal approves the change.</p>
+        <p>Now: <strong>{student.absent ? 'AB' : student.marks}</strong> out of {exam.maxMarks}. The parent is told when the principal approves the change.</p>
         <Field label="Correct mark (or AB)"><input className="field w-28" value={v} onChange={(e) => setV(e.target.value.toUpperCase().replace(/[^0-9.AB]/g, ''))} /></Field>
         <Field label="Reason"><textarea className="field" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Totalling error on page 3" /></Field>
       </div>}

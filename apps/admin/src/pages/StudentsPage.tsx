@@ -92,24 +92,24 @@ function AddStudentSheet({ open, onClose }: { open: boolean; onClose: () => void
         <Field label="Admission number" error={errors.admissionNo} hint="Leave empty to number automatically."><input className="field" value={f.admissionNo} onChange={set('admissionNo')} placeholder="Automatic" /></Field>
 
         <div className="border-t border-line pt-4">
-          <h3 className="font-semibold">Family</h3>
-          <p className="mb-3 text-sm text-ink-muted">Brothers and sisters share one family login, found by mobile number.</p>
-          <Field label="Family mobile" error={errors.mobile}><input className="field" inputMode="tel" value={f.mobile} onChange={set('mobile')} placeholder="10-digit mobile" /></Field>
+          <h3 className="font-semibold">Parent</h3>
+          <p className="mb-3 text-sm text-ink-muted">Brothers and sisters share one parent login, found by mobile number.</p>
+          <Field label="Parent mobile" error={errors.mobile}><input className="field" inputMode="tel" value={f.mobile} onChange={set('mobile')} placeholder="10-digit mobile" /></Field>
         </div>
         {lookup?.family ? (
           <div className="rounded-xl bg-brand-soft p-4">
-            <p className="font-semibold text-brand">Existing family: {lookup.family.family_name}</p>
+            <p className="font-semibold text-brand">Existing parent login: {lookup.family.family_name}</p>
             <p className="mt-1 text-sm">Children: {lookup.family.children.map((c) => fullName(c)).join(', ')}</p>
-            <p className="mt-1 text-sm text-ink-muted">This student will be added to the same family and login.</p>
+            <p className="mt-1 text-sm text-ink-muted">This student will be added to the same parent login.</p>
           </div>
         ) : digits.length === 10 && lookup ? (
           <div className="space-y-4">
-            {lookup.staffMatch && <p className="rounded-lg bg-tangedu-soft px-3 py-2.5 text-sm text-[#7A5A00]">This mobile belongs to staff member <strong>{lookup.staffMatch}</strong>. The family will use their existing login, with a Staff / Parent switch.</p>}
+            {lookup.staffMatch && <p className="rounded-lg bg-tangedu-soft px-3 py-2.5 text-sm text-[#7A5A00]">This mobile belongs to staff member <strong>{lookup.staffMatch}</strong>. The parent will use their existing login, with a Staff / Parent switch.</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Father's name" error={errors.fatherName}><input className="field" value={f.fatherName} onChange={set('fatherName')} /></Field>
               <Field label="Mother's name" error={errors.motherName}><input className="field" value={f.motherName} onChange={set('motherName')} /></Field>
             </div>
-            <Field label="Family email" error={errors.email} hint="Optional. Lets the family reset its password by email."><input type="email" className="field" value={f.email} onChange={set('email')} /></Field>
+            <Field label="Parent email" error={errors.email} hint="Optional. Lets the parent reset their password by email."><input type="email" className="field" value={f.email} onChange={set('email')} /></Field>
             <Field label="Address" error={errors.address}><input className="field" value={f.address} onChange={set('address')} /></Field>
           </div>
         ) : null}

@@ -13,7 +13,7 @@ export interface Announcement { is_public?: number; id: number; title: string; b
 function audienceLabel(a: Audience, names: Map<number, string>) {
   if (a.type === 'all') return 'Everyone';
   if (a.type === 'staff') return 'Staff';
-  if (a.type === 'families') return 'All families';
+  if (a.type === 'families') return 'All parents';
   return 'ids' in a ? a.ids.map((id) => names.get(id) ?? `#${id}`).join(', ') : '';
 }
 
@@ -49,8 +49,8 @@ function ComposeSheet({ open, onClose }: { open: boolean; onClose: () => void })
         <Field label="Message" error={errors.body}><textarea className="field min-h-36" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} maxLength={5000} /></Field>
         <Field label="Who should see it" error={errors.audience || errors['audience.ids']}>
           <select className="field" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value, ids: [] })}>
-            {canAll && <><option value="all">Everyone (staff and families)</option><option value="staff">Staff only</option><option value="families">All families</option><option value="classes">Families of selected classes</option></>}
-            <option value="sections">Families of selected sections</option>
+            {canAll && <><option value="all">Everyone (staff and parents)</option><option value="staff">Staff only</option><option value="families">All parents</option><option value="classes">Parents of selected classes</option></>}
+            <option value="sections">Parents of selected sections</option>
           </select>
         </Field>
         {f.type === 'classes' && (
@@ -106,7 +106,7 @@ export default function AnnouncementsPage() {
   const items = (q.data ?? []).filter((a) => a.status !== 'archived');
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Notices" description={manage ? 'Send notices to staff, all families, or families of chosen classes and sections. Each person also gets an alert.' : undefined} action={newButton} />
+      <PageHeader title="Notices" description={manage ? 'Send notices to staff, all parents, or parents of chosen classes and sections. Each person also gets an alert.' : undefined} action={newButton} />
       {q.isLoading ? <Skeleton rows={3} /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />
         : items.length === 0 ? <EmptyState title="No notices yet" body={manage ? 'Notices you publish appear here and in everyone\'s alerts.' : 'Notices from the school will appear here.'} action={newButton || undefined} /> : (
         <div className="space-y-3">

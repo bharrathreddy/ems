@@ -65,7 +65,7 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
     const last = await this.getSetting<{ date: string }>('reminders_last_run');
     if (hour < 9 || last?.date === today) return;
     const result = await this.run(today);
-    this.logger.log(`Fee reminders ${today}: ${result.emails} emails, ${result.noEmail} families without email`);
+    this.logger.log(`Fee reminders ${today}: ${result.emails} emails, ${result.noEmail} parents without email`);
   }
 
   private async school() {
@@ -132,7 +132,7 @@ export class FeeRemindersService implements OnModuleInit, OnModuleDestroy {
     if (!st) throw Errors.notFound('Student');
     const items = await this.dueItems([st.id]);
     if (!items.length) throw Errors.badRequest('NOTHING_DUE', 'This student has nothing due.');
-    if (!items[0].email) throw Errors.badRequest('NO_EMAIL', 'The family has no email address. Add it on the Family tab, or send a WhatsApp reminder.');
+    if (!items[0].email) throw Errors.badRequest('NO_EMAIL', 'The parent has no email address. Add it on the student’s Parents tab, or send a WhatsApp reminder.');
     const today = await schoolToday(this.db);
     const amount = await this.queue(items, items, await this.school());
     await this.db.insertInto('fee_reminder_log').values({ student_id: st.id, kind: 'manual', sent_on: new Date(`${today}T00:00:00Z`), to_email: items[0].email, amount: (amount / 100).toFixed(2), sent_by: u.id }).execute();

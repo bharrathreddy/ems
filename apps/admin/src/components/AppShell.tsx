@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Bell, BookOpen, CheckSquare, Home, LogOut, Search, Settings, Users, Wrench, UserRound, ArrowLeftRight, GraduationCap, Megaphone, FileSpreadsheet, Wallet, ReceiptText, AlertCircle, SlidersHorizontal, Grid3x3, CalendarDays, Globe, CalendarClock, UserCheck, CalendarOff, ClipboardList, PenLine, Banknote, Receipt, FileText, Bus, Package, ShoppingBag } from 'lucide-react';
+import { Bell, BookOpen, CheckSquare, Home, LogOut, Search, Settings, Users, Wrench, UserRound, ArrowLeftRight, GraduationCap, Megaphone, FileSpreadsheet, Wallet, ReceiptText, AlertCircle, SlidersHorizontal, Grid3x3, CalendarDays, Globe, CalendarClock, UserCheck, CalendarOff, ClipboardList, PenLine, Banknote, Receipt, FileText, Bus, Package, ShoppingBag, Eye, History, UserCog, ShieldCheck } from 'lucide-react';
 import { useUnreadCount } from '../lib/notifications';
 import { VersionBanner } from './ServerCheck';
 import { startAutoFlush } from '../lib/offline';
@@ -38,6 +38,9 @@ export const NAV: NavItem[] = [
   { to: '/website', label: 'Website', icon: Globe, show: (a) => a.can('cms.view') && a.me?.workspace === 'staff', group: 'Communication' },
   { to: '/imports', label: 'Bulk import', icon: FileSpreadsheet, show: (a) => a.can('imports.run'), group: 'Administration' },
   { to: '/settings', label: 'School settings', icon: Settings, show: (a) => a.can('settings.view'), group: 'Administration' },
+  { to: '/access', label: 'Access & roles', icon: ShieldCheck, show: (a) => !!a.me?.user.isSuperAdmin && a.me.workspace === 'staff', group: 'Administration' },
+  { to: '/login-as', label: 'Login as', icon: UserCog, show: (a) => !!a.me?.user.isSuperAdmin && a.me.workspace === 'staff', group: 'Administration' },
+  { to: '/activity', label: 'Activity log', icon: History, show: (a) => !!a.me?.user.isSuperAdmin && a.me.workspace === 'staff', group: 'Administration' },
   { to: '/developer', label: 'Developer console', icon: Wrench, show: (a) => !!a.me?.user.isSuperAdmin && a.me.workspace === 'staff', group: 'Administration' },
 ];
 
@@ -70,14 +73,22 @@ export default function AppShell() {
   const items = NAV.filter((n) => n.show(auth));
   const groups = [...new Set(items.map((i) => i.group))];
   const { pathname } = useLocation();
+  const proxy = auth.me?.proxy;
 
   return (
+    <>
+    {proxy && (
+      <div role="status" className="sticky top-0 z-40 flex h-12 items-center justify-between gap-3 bg-[#7A5A00] px-4 text-sm text-white">
+        <p className="min-w-0 truncate"><Eye size={16} className="mr-1.5 inline" aria-hidden />Logged in as <b>{auth.me?.user.name}</b><span className="hidden sm:inline"> · everything you do is saved in their name</span></p>
+        <button onClick={() => void auth.endProxy()} className="shrink-0 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-[#7A5A00] hover:bg-white/90">Back to my login</button>
+      </div>
+    )}
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface lg:flex">
+      <aside className={clsx('sticky hidden flex-col border-r border-line bg-surface lg:flex', proxy ? 'top-12 h-[calc(100dvh-3rem)]' : 'top-0 h-dvh')}>
         <div className="px-5 pb-4 pt-6">
           <p className="text-[17px] font-bold leading-tight">{auth.branding?.name ?? 'School Office'}</p>
-          <p className="mt-0.5 text-sm text-ink-muted">{auth.me?.workspace === 'staff' ? 'Staff workspace' : 'Family workspace'}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">{auth.me?.workspace === 'staff' ? 'Staff workspace' : auth.me?.workspace === 'student' ? 'Student' : 'Parent workspace'}</p>
         </div>
         <div className="px-4 pb-3"><WorkspaceSwitch compact /></div>
         <nav className="flex-1 overflow-y-auto px-3" aria-label="Main">
@@ -104,7 +115,7 @@ export default function AppShell() {
               <span className="block truncate text-xs text-ink-muted">{auth.me?.user.email ?? auth.me?.user.mobile}</span></span>
           </NavLink>
           <button onClick={auth.logout} className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-chalk hover:text-ink">
-            <LogOut size={16} aria-hidden /> Log out
+            <LogOut size={16} aria-hidden /> {proxy ? 'Back to my login' : 'Log out'}
           </button>
         </div>
       </aside>
@@ -112,7 +123,7 @@ export default function AppShell() {
       <div className="min-w-0">
         <VersionBanner />
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur lg:hidden">
+        <header className={clsx('sticky z-30 flex items-center justify-between border-b border-line bg-surface/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur lg:hidden', proxy ? 'top-12' : 'top-0')}>
           <p className="truncate text-base font-bold">{auth.branding?.short_name ?? auth.branding?.name ?? 'School Office'}</p>
           {auth.me && auth.me.workspaces.length > 1 && (
             <button onClick={() => auth.switchWorkspace(auth.me!.workspace === 'staff' ? 'parent' : 'staff')}
@@ -142,5 +153,6 @@ export default function AppShell() {
         </nav>
       </div>
     </div>
+    </>
   );
 }

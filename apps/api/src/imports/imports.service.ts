@@ -31,9 +31,9 @@ const STUDENT_COLUMNS: Column[] = [
   { key: 'admissionDate', header: 'Admission Date', example: '2024-06-12' },
   { key: 'fatherName', header: 'Father Name', example: 'Srinivas Kumar' },
   { key: 'motherName', header: 'Mother Name', example: 'Lakshmi' },
-  { key: 'familyMobile', header: 'Family Mobile', required: true, example: '9876543210', note: 'Family login. Brothers and sisters share the same mobile and become one family.' },
+  { key: 'familyMobile', header: 'Parent Mobile', required: true, example: '9876543210', note: 'Parent login. Brothers and sisters share the same mobile and one parent login.' },
   { key: 'altMobile', header: 'Alternate Mobile', example: '' },
-  { key: 'familyEmail', header: 'Family Email', example: '', note: 'Optional. Lets the family reset its password by email.' },
+  { key: 'familyEmail', header: 'Parent Email', example: '', note: 'Optional. Lets the parent reset their password by email.' },
   { key: 'address', header: 'Address', example: '2-45, Main Road, Shankarpalli', width: 36 },
 ];
 const STAFF_COLUMNS: Column[] = [
@@ -92,7 +92,7 @@ export class ImportsService {
       .select(['c.name', 's.name as section']).where('c.is_active', '=', 1).orderBy('c.level_order').orderBy('s.name').execute();
     const byClass = new Map<string, string[]>();
     for (const r of classes) byClass.set(r.name, [...(byClass.get(r.name) ?? []), ...(r.section ? [r.section] : [])]);
-    return buildTemplate('Families and students import', STUDENT_COLUMNS, {
+    return buildTemplate('Parents and students import', STUDENT_COLUMNS, {
       'Classes and sections in this school': [...byClass].map(([c, s]) => `${c}: ${s.join(', ') || '(no sections yet)'}`),
     });
   }
@@ -121,11 +121,11 @@ export class ImportsService {
       if (!d.section) err(row, 'Section', 'Required.');
       else if (cls && !sectionId) err(row, 'Section', `Section "${d.section}" does not exist in ${d.className}.`);
       const mobile = parseMobile(d.familyMobile ?? '');
-      if (!d.familyMobile) err(row, 'Family Mobile', 'Required.');
-      else if (!mobile) err(row, 'Family Mobile', `"${d.familyMobile}" is not a valid 10-digit mobile number.`);
+      if (!d.familyMobile) err(row, 'Parent Mobile', 'Required.');
+      else if (!mobile) err(row, 'Parent Mobile', `"${d.familyMobile}" is not a valid 10-digit mobile number.`);
       if (d.altMobile && !parseMobile(d.altMobile)) err(row, 'Alternate Mobile', 'Not a valid mobile number.');
       const email = d.familyEmail ? d.familyEmail.toLowerCase() : null;
-      if (email && !isEmail(email)) err(row, 'Family Email', 'Not a valid email.');
+      if (email && !isEmail(email)) err(row, 'Parent Email', 'Not a valid email.');
       const dob = parseDate(d.dob ?? ''); if (dob === 'invalid') err(row, 'Date of Birth', `"${d.dob}" is not a valid date.`);
       const adm = parseDate(d.admissionDate ?? ''); if (adm === 'invalid') err(row, 'Admission Date', `"${d.admissionDate}" is not a valid date.`);
       const gender = parseGender(d.gender ?? ''); if (gender === 'invalid') err(row, 'Gender', 'Use M, F or Other.');
@@ -157,14 +157,14 @@ export class ImportsService {
     const userByMobile = new Map(users.map((u) => [u.mobile!, u]));
     for (const [mobile, list] of groups) {
       const emails = [...new Set(list.map((p) => p.email).filter(Boolean))];
-      if (emails.length > 1) err(list[1].row, 'Family Email', `Rows with mobile ${mobile} have different emails (${emails.join(', ')}).`);
+      if (emails.length > 1) err(list[1].row, 'Parent Email', `Rows with mobile ${mobile} have different emails (${emails.join(', ')}).`);
       if (famSet.has(mobile)) { existingFamilies++; continue; }
       const u = userByMobile.get(mobile);
-      if (u && !u.staff_id && !u.family_id) err(list[0].row, 'Family Mobile', `${mobile} is already used by another account.`);
+      if (u && !u.staff_id && !u.family_id) err(list[0].row, 'Parent Mobile', `${mobile} is already used by another account.`);
       if (u?.staff_id) staffFamilies++; else newFamilies++;
       if (emails[0]) {
         const owner = await this.db.selectFrom('users').select('mobile').where('email', '=', emails[0]).executeTakeFirst();
-        if (owner && owner.mobile !== mobile) err(list[0].row, 'Family Email', `${emails[0]} is already used by another account.`);
+        if (owner && owner.mobile !== mobile) err(list[0].row, 'Parent Email', `${emails[0]} is already used by another account.`);
       }
     }
     return { errors, planned, groups, summary: { students: planned.length, newFamilies, existingFamilies, staffFamilies } };

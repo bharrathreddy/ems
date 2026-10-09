@@ -7,22 +7,32 @@ export class ApiError extends Error {
 let accessToken: string | null = null;
 let refreshing: Promise<boolean> | null = null;
 const WS_KEY = 'ems.workspace';
+/** "Login as" is per browser tab: this tab remembers whose login it is using; other tabs keep the developer's own. */
+const PROXY_KEY = 'ems.proxy';
+const PROXY_WS_KEY = 'ems.proxy.workspace';
+const tabStore = { get: (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string | null) => { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch { /* storage unavailable */ } } };
 
 export const session = {
   setToken: (t: string | null) => { accessToken = t; },
   hasToken: () => accessToken !== null,
-  getWorkspace: () => { try { return localStorage.getItem(WS_KEY); } catch { return null; } },
-  setWorkspace: (w: string | null) => { try { w ? localStorage.setItem(WS_KEY, w) : localStorage.removeItem(WS_KEY); } catch { /* storage unavailable */ } },
+  proxyName: () => tabStore.get(PROXY_KEY),
+  setProxy: (name: string | null) => { tabStore.set(PROXY_KEY, name); tabStore.set(PROXY_WS_KEY, null); },
+  getWorkspace: () => { if (tabStore.get(PROXY_KEY)) return tabStore.get(PROXY_WS_KEY); try { return localStorage.getItem(WS_KEY); } catch { return null; } },
+  setWorkspace: (w: string | null) => { if (tabStore.get(PROXY_KEY)) return tabStore.set(PROXY_WS_KEY, w); try { w ? localStorage.setItem(WS_KEY, w) : localStorage.removeItem(WS_KEY); } catch { /* storage unavailable */ } },
 };
 
-/** Single-flight refresh using the httpOnly cookie. */
+const doRefresh = (proxy: boolean) => fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', ...(proxy ? { 'X-Proxy': '1' } : {}) }, body: '{}' })
+  .then(async (r) => { if (!r.ok) return false; accessToken = (await r.json()).data.accessToken; return true; });
+
+/** Single-flight refresh using the httpOnly cookie. If a "Login as" session has ended, the tab returns to the developer's own login. */
 export function refreshAccessToken(): Promise<boolean> {
-  refreshing ??= fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-    .then(async (r) => {
-      if (!r.ok) return false;
-      accessToken = (await r.json()).data.accessToken;
-      return true;
-    })
+  refreshing ??= (async () => {
+    if (session.proxyName()) {
+      if (await doRefresh(true)) return true;
+      session.setProxy(null);
+    }
+    return doRefresh(false);
+  })()
     .catch(() => false)
     .finally(() => { refreshing = null; });
   return refreshing;

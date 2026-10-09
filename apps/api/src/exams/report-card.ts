@@ -40,7 +40,7 @@ export async function reportCardData(db: Database, exams: ExamsService, yearId: 
     db.selectFrom('co_areas').select(['id', 'name']).where('academic_year_id', '=', yearId).where((eb) => eb.or([eb('class_id', 'is', null), eb('class_id', '=', st.class_id)])).orderBy('position').execute(),
     db.selectFrom('co_grades').select(['area_id', 'term', 'grade']).where('student_id', '=', studentId).execute(),
   ]);
-  // A term's class-teacher entries are visible to families once that term's SA is published.
+  // A term's class-teacher entries are visible to parents once that term's SA is published.
   const pubTerms = new Set((await db.selectFrom('exam_publications as p').innerJoin('exams as e', 'e.id', 'p.exam_id').select('e.term')
     .where('p.section_id', '=', st.section_id).where('e.academic_year_id', '=', yearId).where('e.kind', '=', 'sa').execute()).map((r) => r.term));
   const termVisible = (t: number) => !publishedOnly || pubTerms.has(t);

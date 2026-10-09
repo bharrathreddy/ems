@@ -95,7 +95,7 @@ export const DEFAULT_ROLES: RoleTemplate[] = [
   { key: 'driver', name: 'Driver', workspace: 'staff', grants: [['students.view', 'assigned_route'], ['transport.view', 'assigned_route']] },
   { key: 'non_teaching_staff', name: 'Non-Teaching Staff', workspace: 'staff', grants: [['announcements.view', 'all']] },
   {
-    key: 'parent', name: 'Parent (Family)', workspace: 'parent',
+    key: 'parent', name: 'Parent', workspace: 'parent',
     grants: [['students.view', 'own_children'], ['fees.view', 'own_children'], ['payments.view', 'own_children'],
       ['attendance.view', 'own_children'], ['marks.view', 'own_children'], ['announcements.view', 'own_records'], ['timetable.view', 'own_children'], ['transport.view', 'own_children']],
   },

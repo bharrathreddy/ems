@@ -44,9 +44,10 @@ export async function seed(db: Database, o: SeedOptions) {
   const added = before.size ? new Set(permRows.map((p) => `${p.module_key}.${p.action}`).filter((k) => !before.has(k))) : new Set<string>();
 
   for (const role of DEFAULT_ROLES) {
-    await db.insertInto('roles').values({ role_key: role.key, name: role.name, workspace: role.workspace, is_system: 1 }).ignore().execute();
+    const ins = await db.insertInto('roles').values({ role_key: role.key, name: role.name, workspace: role.workspace, is_system: 1 }).ignore().executeTakeFirst();
     const r = await db.selectFrom('roles').select('id').where('role_key', '=', role.key).executeTakeFirstOrThrow();
-    const existing = await db.selectFrom('role_permissions').select('permission_id').where('role_id', '=', r.id).limit(1).execute();
+    // A role created just now gets its full defaults. An existing one keeps exactly what was set for it (even nothing at all).
+    const existing = Number(ins.numInsertedOrUpdatedRows ?? 0) > 0 ? [] : [{ existing: true }];
     const template = role.grants === 'ALL'
       ? perms.map((p) => [`${p.module_key}.${p.action}`, 'all'] as const)
       : role.grants.map(([perm, scope]) => [perm, scope ?? 'all'] as const);

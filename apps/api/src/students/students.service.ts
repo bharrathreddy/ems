@@ -149,7 +149,7 @@ export class StudentsService {
       let familyId: number;
       if ('familyId' in input.family) {
         const fam = await trx.selectFrom('families').select('id').where('public_id', '=', input.family.familyId).executeTakeFirst();
-        if (!fam) throw Errors.notFound('Family');
+        if (!fam) throw Errors.notFound('Parent');
         familyId = fam.id;
       } else {
         familyId = await this.createFamily(trx, input.family, actor.id);
@@ -178,7 +178,7 @@ export class StudentsService {
 
   async createFamily(trx: Database, f: FamilyInput, actorId: number) {
     const exists = await trx.selectFrom('families').select('id').where('primary_mobile', '=', f.mobile).executeTakeFirst();
-    if (exists) throw Errors.conflict(`A family with mobile ${f.mobile} already exists. Add the student to that family instead.`);
+    if (exists) throw Errors.conflict(`A parent with mobile ${f.mobile} already exists. Add the student to that parent instead.`);
     const userId = await findOrCreateFamilyUser(trx, { name: f.familyName, mobile: f.mobile, email: f.email }, actorId);
     const res = await trx.insertInto('families').values({
       public_id: newPublicId(), user_id: userId, family_name: f.familyName, father_name: f.fatherName ?? null,
@@ -251,7 +251,7 @@ export class StudentsService {
 
   async updateFamily(actor: RequestUser, familyPublicId: string, input: Partial<FamilyInput>, meta: Meta) {
     const fam = await this.db.selectFrom('families').selectAll().where('public_id', '=', familyPublicId).executeTakeFirst();
-    if (!fam) throw Errors.notFound('Family');
+    if (!fam) throw Errors.notFound('Parent');
     await this.db.transaction().execute(async (trx) => {
       const patch: Record<string, unknown> = { updated_by: actor.id };
       const map: Record<string, string> = { familyName: 'family_name', fatherName: 'father_name', motherName: 'mother_name', guardianName: 'guardian_name',

@@ -11,6 +11,8 @@ import { AppModule } from './app.module';
 import { config } from './config';
 import { CmsService } from './cms/cms.service';
 import { KYSELY, type Database } from './database/database.module';
+import { AuditService } from './common/audit.service';
+import { clientMeta, type AppRequest } from './common/request-user';
 
 /** Built admin app (apps/admin/dist). Served by this same Node process so one Hostinger Web App runs everything. */
 export const ADMIN_DIST = resolve(__dirname, '../../admin/dist');
@@ -41,6 +43,20 @@ export async function createApp(): Promise<INestApplication> {
   app.use((_req: Request, res: Response, next: NextFunction) => { res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()'); next(); });
   app.disable('x-powered-by');
   app.use(cookieParser());
+  // Activity log: every PDF the app hands out (receipts, payslips, report cards, sale receipts). Lists are logged by the exports screen itself.
+  {
+    const audit = app.get(AuditService);
+    const KIND: Array<[RegExp, string]> = [[/\/payments\/[^/]+\/pdf$/, 'Fee receipt'], [/\/payslips\/[^/]+\/pdf$/, 'Payslip'], [/\/report-cards?\.pdf$/, 'Report card'], [/\/sales\/[^/]+\/pdf$/, 'Sale receipt'], [/\/expenses\/[^/]+\/bill$/, 'Expense bill']];
+    app.use((req: AppRequest, res: Response, next: NextFunction) => {
+      if (req.method === 'GET' && req.path.startsWith('/api/v1/') && !req.path.startsWith('/api/v1/exports/')) {
+        res.on('finish', () => {
+          const kind = KIND.find(([re]) => re.test(req.path))?.[1];
+          if (kind && res.statusCode === 200 && req.user) void audit.log(req.user, { module: 'reports', action: 'download', after: { file: kind, path: req.path.replace('/api/v1', '') }, ...clientMeta(req) }).catch(() => undefined);
+        });
+      }
+      next();
+    });
+  }
   if (config.appUrl) app.enableCors({ origin: config.appUrl.split(','), credentials: true });
 
   if (config.apiDocs) {

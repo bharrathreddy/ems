@@ -1,6 +1,6 @@
-# Start here (version 0.12.0)
+# Start here (version 0.14.0)
 
-This one package contains everything so far: students and families, fees and receipts,
+This one package contains everything so far: students and parents, fees and receipts,
 teaching grid and timetable, the public school website, year end, attendance, the dashboard, exams and report cards, Excel/PDF exports, fee reminder emails, HR, payroll and expenses, and (new in 0.11.0) transport, stock and the sales counter.
 
 ## Updating an existing copy (XAMPP on Windows)
@@ -21,10 +21,10 @@ teaching grid and timetable, the public school website, year end, attendance, th
    npm run build
    npm start
    ```
-5. Wait for: `Ready (version 0.12.0). Website: http://localhost:3000/ ...`
+5. Wait for: `Ready (version 0.14.0). Website: http://localhost:3000/ ...`
 6. Open:
    - Website: **http://localhost:3000/**
-   - Staff and family app: **http://localhost:3000/app/login**
+   - Staff and parent app: **http://localhost:3000/app/login**
 
 Your existing data stays. Database updates are applied automatically on start.
 
@@ -58,7 +58,40 @@ If `npm start` says *The last build did not finish*, run `npm run build` again.
 5. Students' photos (optional): staff tap the round photo on a student's page.
 
 The cycle: the subject teacher enters marks in **Marks** and submits → the principal approves in **Exams → Approvals**
-→ the principal **publishes** each section → families see results and the report card.
+→ the principal **publishes** each section → parents see results and the report card.
+
+## Access & roles (new in 0.14.0)
+
+Developer only, under **Administration → Access & roles**.
+
+- A module switched on in the Developer console is on for the school, but each person sees it only if their **role** allows it.
+- **Roles tab**: pick a role (Principal, Institution Admin, Teacher, Parent…). For each module choose **No access**, **View**
+  or **View & edit**. **Advanced** shows each action (for example Collect fees, Void receipts, Approve marks) and, for
+  student data, whose records it covers (everyone's, their class-teacher sections, sections they teach, own children).
+  Press **Save**: it applies at once, even to people already signed in.
+- **New role**: start empty or copy a role, then change it. Give it to staff on the Staff screen (Edit → Roles).
+  Built-in roles cannot be deleted but can be changed or switched off. A new role can be deleted when nobody has it.
+- **People tab**: find a person to give them more than their role, or take something away. Everything else follows their role.
+- Every change is in the Activity log. The developer login always has full access.
+
+## Login as and the activity log (new in 0.13.0)
+
+Both are for the developer login only, under **Administration** in the menu.
+
+- **Login as**: choose Staff, Drivers, Parents or Students, find the person, press **Login as**. You see and can do exactly
+  what they see and do. Whatever you save shows their name (for example on a receipt or attendance), and the activity
+  log records that you did it. They are not told. A brown bar at the top shows whose login you are using; press
+  **Back to my login** to return. It works per browser tab: other tabs stay in your own login.
+- **Activity log**: sign-ins, sign-outs and wrong passwords; every change with before and after; every Excel/PDF download
+  and receipt, payslip or report card opened. Filter by dates (India time), type, area, person, or only what was done
+  through Login as. Tap an entry for details. Download as Excel or PDF. Entries older than 2 years are deleted automatically.
+
+## Wording (new in 0.12.1)
+
+Screens, messages and guides now say **parents** instead of families (the student's **Parents** tab, Parent mobile,
+Parent login, notices to "All parents"). Nothing changes in your data. Names saved before, such as "Kumar family",
+stay as they are; change one with **Edit** on the student's Parents tab (Account name). Excel import files made with
+the old template (column "Family Mobile") still import.
 
 ## Security update (new in 0.12.0)
 
@@ -78,7 +111,7 @@ What you will notice:
 4. **Transport → Routes & stops**: open a route, choose its bus, add the stops in the order the bus reaches them
    in the morning with the pickup and drop times, and save. Then choose each student's stop in the list below.
    (A student is put on a route on their page: **Fees** tab → **Bus route**.)
-5. Families now see the bus card on their child's page. Drivers see **My bus** with their students and parents' phones.
+5. Parents now see the bus card on their child's page. Drivers see **My bus** with their students and parents' phones.
 6. **Transport → Fuel & service**: add each fuel fill with the odometer reading (for km per litre) and each repair.
    They are saved in **Expenses** under "Transport & fuel" and follow the approval rule.
 
@@ -86,7 +119,7 @@ What you will notice:
 
 1. **Developer console**: switch on **Stock & sales counter**.
 2. **Stock → Items**: add books, uniform items, stationery, cleaning and lab items. Count today's stock as you add each one.
-   Turn on **Sold to students** and give the price for anything families buy. Set an alert level for items you must not run out of.
+   Turn on **Sold to students** and give the price for anything parents buy. Set an alert level for items you must not run out of.
 3. **Stock → Book sets**: one set per class with its textbooks and notebooks, at the set price.
 4. **Sales counter**: find the student, tap their class set (shown first) and any single items, choose cash or UPI, press **Receive**.
    The receipt opens as a PDF. Sales are paid at the counter; they are not added to fee dues.
@@ -121,7 +154,7 @@ the Institution Admin finalises payroll; the Principal and Institution Admin app
   Fee dues, Fee collection and Leaving students. Each person only gets the rows and details they can see on screen.
 - **Fee reminder emails:** Fee dues → **Email reminders** → switch on, choose how many days before the due date
   and how often to repeat overdue reminders. Needs **School settings → Email sending (SMTP)**. Each row also has an
-  **Email** button to send one reminder now. Families without an email are listed so you can use WhatsApp instead.
+  **Email** button to send one reminder now. Parents without an email are listed so you can use WhatsApp instead.
 - **Search engines:** `/robots.txt` and `/sitemap.xml` are created automatically from the published website.
   Set `APP_URL` to your real address on Hostinger so the sitemap uses it.
 
@@ -141,4 +174,4 @@ If you still need help, send the doctor output and the last lines printed by `np
 ## Hostinger
 
 Push the new code (or upload the zip). Hostinger runs `npm run build` and restarts the app by itself.
-After it starts, open your domain: the website appears first; staff and families log in at `/app/login`.
+After it starts, open your domain: the website appears first; staff and parents log in at `/app/login`.

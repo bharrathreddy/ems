@@ -61,6 +61,13 @@ These live outside the app, so only you can do them:
    **Settings → Code security** and turn on **Secret scanning**, which checks your full history for leaked keys.
 6. **Backups.** Export the database before each update (see INSTALL.md, Part C).
 
+## Login as and the activity log (0.13.0)
+
+- Only the developer login can use Login as or open the activity log; the server checks this on every request.
+- A Login as session cannot start another one, cannot open another developer's login, and stops working at once if
+  the developer's own login is turned off. It uses its own cookie, so the developer's own sign-in is never replaced.
+- Every entry made through Login as stores both the person and the developer. Log entries are deleted after 2 years.
+
 ## Known limits
 
 - There is no two-step login (one-time codes) inside the app yet.

@@ -15,7 +15,7 @@ function AuthFrame({ children }: { children: ReactNode }) {
         style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0 39px, rgba(255,255,255,.06) 39px 40px)' }}>
         <p className="text-sm font-medium text-white/70">{branding?.institution_type === 'college' ? 'College office' : 'School office'}</p>
         <h1 className="mt-6 max-w-[14ch] text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">{branding?.name ?? 'Welcome'}</h1>
-        <p className="mt-4 max-w-sm text-[15px] text-white/75 lg:mt-0">Staff, families and students sign in with the details given by the school office.</p>
+        <p className="mt-4 max-w-sm text-[15px] text-white/75 lg:mt-0">Staff, parents and students sign in with the details given by the school office.</p>
       </section>
       <section className="flex items-start justify-center px-5 py-10 lg:items-center">
         <div className="w-full max-w-sm">{children}</div>
@@ -63,7 +63,7 @@ export function LoginPage() {
         <button className="btn-primary w-full" disabled={busy || !identifier || !password}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
       <p className="mt-6 text-sm text-ink-muted">
-        Forgot your password? Staff and families with an email can <Link to="/forgot-password" className="font-semibold text-brand underline-offset-2 hover:underline">reset it by email</Link>. Otherwise, ask the school office to send new login details.
+        Forgot your password? Staff and parents with an email can <Link to="/forgot-password" className="font-semibold text-brand underline-offset-2 hover:underline">reset it by email</Link>. Otherwise, ask the school office to send new login details.
       </p>
     </AuthFrame>
   );

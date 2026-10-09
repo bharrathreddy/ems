@@ -219,7 +219,7 @@ describe('R1 sprint 2: students, families, scopes, announcements, imports (e2e)'
       const v = await as(admin.token).upload('/api/v1/imports/families_students/validate', await xlsx('families_students', rows));
       expect(v.status).toBe(200);
       expect(v.body.data.status).toBe('invalid');
-      expect(v.body.data.errors.map((e: any) => e.column).sort()).toEqual(['Class', 'Family Mobile']);
+      expect(v.body.data.errors.map((e: any) => e.column).sort()).toEqual(['Class', 'Parent Mobile']);
       expect(v.body.data.errors[0].row).toBe(4);
       const commit = await as(admin.token).post(`/api/v1/imports/${v.body.data.jobId}/commit`);
       expect(commit.body.code).toBe('IMPORT_HAS_ERRORS');

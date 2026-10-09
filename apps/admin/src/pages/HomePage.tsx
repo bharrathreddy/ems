@@ -45,7 +45,7 @@ function SetupChecklist() {
   return (
     <section className="panel mb-8 p-5">
       <h2 className="text-lg font-semibold">Finish setting up</h2>
-      <p className="text-sm text-ink-muted">{remaining} of {q.data.length} steps left before families can use the app.</p>
+      <p className="text-sm text-ink-muted">{remaining} of {q.data.length} steps left before parents can use the app.</p>
       <ul className="mt-4 divide-y divide-line">
         {q.data.map((i) => (
           <li key={i.label}>
@@ -75,7 +75,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-[28px] font-semibold tracking-tight sm:text-3xl">{greeting()}, {first}</h1>
           <p className="mt-1 text-ink-muted">
-            {me.workspace === 'staff' ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Family view'}
+            {me.workspace === 'staff' ? new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Parent view'}
           </p>
         </div>
         {data && (

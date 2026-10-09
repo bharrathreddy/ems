@@ -16,7 +16,7 @@ export async function findOrCreateFamilyUser(
   let userId: number;
   if (byMobile) {
     const hasFamily = await trx.selectFrom('families').select('id').where('user_id', '=', byMobile.id).executeTakeFirst();
-    if (hasFamily) throw Errors.conflict(`Mobile ${input.mobile} already belongs to another family. Add the student to that family instead.`);
+    if (hasFamily) throw Errors.conflict(`Mobile ${input.mobile} already belongs to another parent login. Add the student to that parent instead.`);
     userId = byMobile.id;
     if (input.email && !byMobile.email) {
       const emailOwner = await trx.selectFrom('users').select('id').where('email', '=', input.email).executeTakeFirst();

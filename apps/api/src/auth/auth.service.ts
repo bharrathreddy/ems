@@ -72,11 +72,11 @@ export class AuthService {
     return { ...tokens, mustChangePassword: user.must_change_password === 1, workspaces };
   }
 
-  private async createSession(userId: number, meta: Meta) {
+  private async createSession(userId: number, meta: Meta, impersonatorId: number | null = null) {
     const refreshToken = newToken();
     const expiresAt = new Date(Date.now() + config.refreshTokenTtlDays * 86_400_000);
     const res = await this.db.insertInto('sessions')
-      .values({ user_id: userId, refresh_token_hash: sha256(refreshToken), ip_address: meta.ip, user_agent: meta.userAgent, expires_at: expiresAt, last_used_at: new Date() })
+      .values({ user_id: userId, impersonator_id: impersonatorId, refresh_token_hash: sha256(refreshToken), ip_address: meta.ip, user_agent: meta.userAgent, expires_at: expiresAt, last_used_at: new Date() })
       .executeTakeFirstOrThrow();
     const sessionId = Number(res.insertId);
     const accessToken = await this.jwt.signAsync({ sub: userId, sid: sessionId }, { expiresIn: `${config.accessTokenTtlMin}m` });
@@ -97,11 +97,39 @@ export class AuthService {
     const user = await this.db.selectFrom('users').select(['id', 'status']).where('id', '=', session.user_id).executeTakeFirst();
     if (!user || user.status !== 'active') throw Errors.accountDisabled();
     await this.db.updateTable('sessions').set({ revoked_at: new Date() }).where('id', '=', session.id).execute();
-    return this.createSession(session.user_id, meta);
+    if (session.impersonator_id) {
+      const dev = await this.db.selectFrom('users').select(['status', 'is_super_admin']).where('id', '=', session.impersonator_id).executeTakeFirst();
+      if (!dev || dev.status !== 'active' || !dev.is_super_admin) throw Errors.unauthenticated();
+    }
+    return { ...(await this.createSession(session.user_id, meta, session.impersonator_id)), proxy: !!session.impersonator_id };
   }
 
-  async logout(sessionId: number) {
+  async logout(sessionId: number, user?: RequestUser, meta?: Meta) {
     await this.db.updateTable('sessions').set({ revoked_at: new Date() }).where('id', '=', sessionId).where('revoked_at', 'is', null).execute();
+    if (user && meta && !user.actingUserId) {
+      const u = await this.db.selectFrom('users').select(['email', 'mobile']).where('id', '=', user.id).executeTakeFirst();
+      await this.logLogin(user.id, u?.email ?? u?.mobile ?? user.name, true, 'logout', meta);
+    }
+  }
+
+  /** Developer "Login as": a separate session for the person, marked with the developer as the one really acting. */
+  async startProxy(dev: RequestUser, targetPublicId: string, meta: Meta) {
+    if (!dev.isSuperAdmin || dev.actingUserId) throw Errors.forbidden();
+    const t = await this.db.selectFrom('users').select(['id', 'name', 'status', 'is_super_admin']).where('public_id', '=', targetPublicId).executeTakeFirst();
+    if (!t) throw Errors.notFound('User');
+    if (t.is_super_admin) throw Errors.badRequest('PROXY_NOT_ALLOWED', 'You cannot log in as another developer.');
+    if (t.status !== 'active') throw Errors.badRequest('PROXY_DISABLED', `${t.name}'s login is turned off. Turn it on first.`);
+    const workspaces = await this.perms.availableWorkspaces(t.id, false);
+    if (!workspaces.length) throw Errors.badRequest('PROXY_NO_ACCESS', `${t.name} has nothing to open in the app yet (no role, or no active child).`);
+    const tokens = await this.createSession(t.id, meta, dev.id);
+    await this.audit.log(dev, { module: 'auth', action: 'proxy_start', entityType: 'user', entityId: t.id, after: { as: t.name }, ...meta });
+    return { ...tokens, name: t.name, workspaces };
+  }
+
+  async endProxy(u: RequestUser, meta: Meta) {
+    if (!u.actingUserId) throw Errors.badRequest('NOT_PROXY', 'You are not using someone else\'s login.');
+    await this.db.updateTable('sessions').set({ revoked_at: new Date() }).where('id', '=', u.sessionId).execute();
+    await this.audit.log(u, { module: 'auth', action: 'proxy_end', entityType: 'user', entityId: u.id, ...meta });
   }
 
   async revokeAll(userId: number, exceptSessionId?: number) {
@@ -162,10 +190,16 @@ export class AuthService {
     const [user, session] = await Promise.all([
       this.db.selectFrom('users').select(['id', 'public_id', 'name', 'status', 'is_super_admin', 'must_change_password'])
         .where('id', '=', userId).executeTakeFirst(),
-      this.db.selectFrom('sessions').select(['id', 'revoked_at', 'expires_at']).where('id', '=', sessionId).where('user_id', '=', userId).executeTakeFirst(),
+      this.db.selectFrom('sessions').select(['id', 'revoked_at', 'expires_at', 'impersonator_id']).where('id', '=', sessionId).where('user_id', '=', userId).executeTakeFirst(),
     ]);
     if (!user || !session || session.revoked_at || session.expires_at < new Date()) throw Errors.unauthenticated();
     if (user.status !== 'active') throw Errors.accountDisabled();
+    let actingName: string | null = null;
+    if (session.impersonator_id) {
+      const dev = await this.db.selectFrom('users').select(['name', 'status', 'is_super_admin']).where('id', '=', session.impersonator_id).executeTakeFirst();
+      if (!dev || dev.status !== 'active' || !dev.is_super_admin) throw Errors.unauthenticated();
+      actingName = dev.name;
+    }
     const isSuperAdmin = user.is_super_admin === 1;
     const workspaces = await this.perms.availableWorkspaces(user.id, isSuperAdmin);
     let workspace: Workspace;
@@ -180,6 +214,7 @@ export class AuthService {
       id: user.id, publicId: user.public_id, name: user.name, isSuperAdmin, sessionId,
       mustChangePassword: user.must_change_password === 1, workspace, workspaces,
       permissions: await this.perms.permissionsFor(user.id, isSuperAdmin, workspace),
+      actingUserId: session.impersonator_id ?? null, actingName,
     };
   }
 }

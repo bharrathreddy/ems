@@ -40,7 +40,7 @@ export class LeaveStaffService {
 
   /** Agreed A5: a family applies for a child; the class teacher approves. */
   async applyForStudent(u: RequestUser, studentPublicId: string, b: { startDate: string; endDate: string; reason: string }, meta: Meta) {
-    if (u.workspace === 'staff') throw Errors.badRequest('FAMILY_ONLY', 'Families apply for leave from the parent view.');
+    if (u.workspace === 'staff') throw Errors.badRequest('FAMILY_ONLY', 'Parents apply for leave from the parent view.');
     const year = await currentYear(this.db);
     const sid = await visibleStudentId(this.db, u, studentPublicId, 'attendance.view', year.id);
     await this.checkDates(year.id, b.startDate, b.endDate, true);

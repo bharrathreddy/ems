@@ -54,7 +54,7 @@ export default function DuesPage() {
   };
   return (
     <div>
-      <PageHeader title="Fee dues" description="Who still owes fees. Remind a family on WhatsApp or collect right away." action={
+      <PageHeader title="Fee dues" description="Who still owes fees. Remind a parent on WhatsApp or collect right away." action={
         <div className="flex flex-wrap gap-2"><ReminderSettings /><ExportButtons list="fee-dues" name="fee-dues" params={query} /></div>} />
       <FeeSummaryCards />
       <div className="my-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">

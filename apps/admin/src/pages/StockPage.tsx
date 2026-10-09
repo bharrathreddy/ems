@@ -44,7 +44,7 @@ function ItemSheet({ item, open, onClose, categories }: { item: Item | null; ope
             <datalist id="item-cats">{[...new Set([...categories, 'Books', 'Notebooks', 'Uniform', 'Stationery', 'Cleaning', 'Lab'])].map((c) => <option key={c} value={c} />)}</datalist></Field>
           <Field label="Unit"><select className="field" value={f.unit} onChange={set('unit')}>{[...new Set([f.unit, ...UNITS])].map((u) => <option key={u}>{u}</option>)}</select></Field>
         </div>
-        <label className="flex items-center justify-between gap-3"><span><span className="font-medium">Sold to students</span><span className="block text-sm text-ink-muted">Books, uniforms, ID cards and other things families pay for.</span></span>
+        <label className="flex items-center justify-between gap-3"><span><span className="font-medium">Sold to students</span><span className="block text-sm text-ink-muted">Books, uniforms, ID cards and other things parents pay for.</span></span>
           <Toggle checked={f.forSale} label="Sold to students" onChange={(v) => setF({ ...f, forSale: v })} /></label>
         {f.forSale && <Field label="Price (₹)" error={errors.salePrice}><input className="field" inputMode="decimal" value={f.salePrice} onChange={(e) => setF({ ...f, salePrice: num(e.target.value) })} /></Field>}
         <label className="flex items-center justify-between gap-3"><span><span className="font-medium">Count stock</span><span className="block text-sm text-ink-muted">Off for things you don't keep in store (e.g. ID cards printed on order).</span></span>

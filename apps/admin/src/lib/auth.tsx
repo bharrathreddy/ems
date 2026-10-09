@@ -11,6 +11,8 @@ export interface Me {
   workspaces: Workspace[];
   permissions: Record<string, string>;
   features: Record<string, boolean>;
+  /** Set while the developer uses this person's login through "Login as". */
+  proxy?: { by: string } | null;
 }
 export interface Branding { name: string; short_name: string | null; institution_type: 'school' | 'college'; brand_primary: string | null }
 
@@ -23,6 +25,8 @@ interface AuthState {
   reload: () => Promise<void>;
   switchWorkspace: (w: Workspace) => Promise<void>;
   can: (permission: string) => boolean;
+  startProxy: (userId: string) => Promise<void>;
+  endProxy: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -51,7 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reload();
   };
 
+  const startProxy = async (userId: string) => {
+    const { data } = await api<{ accessToken: string; name: string }>('/auth/proxy', { method: 'POST', body: { userId } });
+    session.setProxy(data.name);
+    session.setToken(data.accessToken);
+    qc.clear();
+    await reload();
+  };
+
+  /** Back to the developer's own login (this tab). */
+  const endProxy = async () => {
+    await api('/auth/proxy/end', { method: 'POST' }).catch(() => undefined);
+    session.setProxy(null);
+    session.setToken(null);
+    qc.clear();
+    if (await refreshAccessToken()) await reload().catch(() => setStatus('anonymous'));
+    else { setMe(null); setStatus('anonymous'); }
+  };
+
   const logout = async () => {
+    if (session.proxyName()) return endProxy();
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     session.setToken(null);
     session.setWorkspace(null);
@@ -73,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return p in me.permissions;
   };
 
-  return <Ctx.Provider value={{ status, me, branding, login, logout, reload, switchWorkspace, can }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ status, me, branding, login, logout, reload, switchWorkspace, can, startProxy, endProxy }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

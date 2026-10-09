@@ -184,7 +184,7 @@ function VehicleSheet({ vehicle, open, onClose }: { vehicle: Vehicle | null; ope
           <Field label="Seats" error={errors.seats}><input className="field" inputMode="numeric" value={f.seats} onChange={(e) => setF({ ...f, seats: e.target.value.replace(/\D/g, '') })} /></Field>
         </div>
         <Field label="Make or name (optional)" hint="e.g. Tata Starbus"><input className="field" value={f.name} onChange={set('name')} /></Field>
-        <Field label="Driver" error={errors.driverStaffId} hint="Add the driver as a staff member (role Driver) first, so families see the name and phone.">
+        <Field label="Driver" error={errors.driverStaffId} hint="Add the driver as a staff member (role Driver) first, so parents see the name and phone.">
           <select className="field" value={f.driverStaffId} onChange={set('driverStaffId')}><option value="">No driver</option>
             {drivers.data?.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.code}{d.isDriver ? '' : d.designation ? ` · ${d.designation}` : ''}</option>)}</select></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -344,7 +344,7 @@ export default function TransportPage() {
   );
 }
 
-/** Bus card on a student's page (families and staff). */
+/** Bus card on a student's page (parents and staff). */
 export function StudentBusCard({ studentId }: { studentId: string }) {
   const { me } = useAuth();
   const enabled = !!me?.features?.transport && !!me?.permissions['transport.view'];

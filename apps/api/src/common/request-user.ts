@@ -16,6 +16,9 @@ export interface RequestUser {
   workspaces: Workspace[];
   /** "module.action" -> scope, for the active workspace only */
   permissions: Map<string, Scope>;
+  /** Set when the developer is using this account through "Login as": who really acts. */
+  actingUserId?: number | null;
+  actingName?: string | null;
 }
 
 export interface AppRequest extends Request {

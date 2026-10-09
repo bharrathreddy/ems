@@ -65,7 +65,7 @@ function AbsenteesTab({ date }: { date: string }) {
   return (
     <div>
       <div className="mb-3"><ExportButtons list="absentees" name={`absentees-${date}`} params={{ date }} /></div>
-      <p className="mb-3 text-sm text-ink-muted">Families already got an in-app alert. Send a WhatsApp message too: tap each button; it opens WhatsApp with the message ready.</p>
+      <p className="mb-3 text-sm text-ink-muted">Parents already got an in-app alert. Send a WhatsApp message too: tap each button; it opens WhatsApp with the message ready.</p>
       <ul className="panel divide-y divide-line">{q.data.rows.map((r) => (
         <li key={r.studentId} className="flex flex-wrap items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1"><Link to={`/students/${r.studentId}`} className="font-semibold">{r.name}</Link><p className="text-sm text-ink-muted">{r.className} · {r.parent} · {r.mobile}</p></div>

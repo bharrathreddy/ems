@@ -7,9 +7,9 @@ import { ErrorState, PageHeader, Skeleton, Toggle } from '../components/ui';
 const MODULE_INFO: Record<string, [string, string]> = {
   academics: ['Classes & years', 'Academic years, classes, sections, subjects'],
   students: ['Students', 'Student records and Student 360'],
-  families: ['Families', 'Family accounts linked to students'],
+  families: ['Parents', 'Parent accounts linked to students'],
   staff: ['Staff', 'Staff records and roles'],
-  announcements: ['Announcements', 'Notices to staff and families'],
+  announcements: ['Announcements', 'Notices to staff and parents'],
   imports: ['Bulk import', 'Excel imports'],
   fees: ['Fees', 'Release 2'], payments: ['Payments & receipts', 'Release 2'],
   attendance: ['Attendance', 'Release 3'], exams: ['Exams', 'Release 4'], marks: ['Marks', 'Release 4'],

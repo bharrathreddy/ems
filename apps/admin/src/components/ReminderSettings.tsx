@@ -29,9 +29,9 @@ export default function ReminderSettings() {
       <button type="button" className="btn-quiet min-h-10 px-3 text-sm" onClick={() => setOpen(true)}><Mail size={16} aria-hidden />Email reminders: {d.enabled ? 'on' : 'off'}</button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Fee reminder emails" footer={edit ? <button className="btn-primary w-full" disabled={save.isPending} onClick={() => save.mutate()}>Save</button> : undefined}>
         <div className="space-y-4">
-          <p className="text-sm text-ink-muted">Once a day after 9 am, families get one email listing fees that fall due soon, and a reminder for overdue fees. Nobody gets the same reminder twice. There is no late fine.</p>
+          <p className="text-sm text-ink-muted">Once a day after 9 am, parents get one email listing fees that fall due soon, and a reminder for overdue fees. Nobody gets the same reminder twice. There is no late fine.</p>
           {!d.emailConfigured && <p className="rounded-lg bg-tangedu-soft px-3 py-2 text-sm text-[#7A5A00]">Email sending is not set up yet, so reminders wait in the queue. Set it up in <Link to="/settings" className="font-semibold underline">School settings</Link>.</p>}
-          {d.studentsWithDuesWithoutEmail > 0 && <p className="rounded-lg bg-chalk px-3 py-2 text-sm">{d.studentsWithDuesWithoutEmail} student{d.studentsWithDuesWithoutEmail === 1 ? ' with dues has' : 's with dues have'} no family email. Remind them on WhatsApp, or add the email on the student's Family tab.</p>}
+          {d.studentsWithDuesWithoutEmail > 0 && <p className="rounded-lg bg-chalk px-3 py-2 text-sm">{d.studentsWithDuesWithoutEmail} student{d.studentsWithDuesWithoutEmail === 1 ? ' with dues has' : 's with dues have'} no parent email. Remind them on WhatsApp, or add the email on the student's Parents tab.</p>}
           <label className="flex items-center gap-3"><Toggle checked={f.enabled} label="Send reminder emails" onChange={(v) => edit && setF({ ...f, enabled: v })} /><span className="font-semibold">Send reminder emails</span></label>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Days before the due date"><input type="number" min={0} max={30} className="field" disabled={!edit} value={f.daysBefore} onChange={(e) => setF({ ...f, daysBefore: Number(e.target.value) })} /></Field>

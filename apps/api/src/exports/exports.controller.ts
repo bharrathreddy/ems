@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query, Res } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { z } from 'zod';
@@ -18,6 +18,8 @@ import { PayrollService } from '../payroll/payroll.service';
 import { ExpensesService } from '../payroll/expenses.service';
 import { TransportService } from '../transport/transport.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { ActivityService } from '../activity/activity.service';
+import { clientMeta, type AppRequest } from '../common/request-user';
 import { toPdf, toXlsx, type ExportTable } from './table';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -41,7 +43,7 @@ export class ExportsController {
     private readonly students: StudentsService, private readonly staff: StaffService, private readonly att: AttendanceService, private readonly leave: LeaveStaffService,
     private readonly exams: ExamsService, private readonly fees: FeeReportsService,
     private readonly payroll: PayrollService, private readonly expenses: ExpensesService,
-    private readonly transport: TransportService, private readonly inventory: InventoryService) {}
+    private readonly transport: TransportService, private readonly inventory: InventoryService, private readonly activity: ActivityService) {}
 
   private async need(u: RequestUser, module: string, perm: string, scope?: 'all') {
     const has = scope ? u.permissions.get(perm) === scope : u.permissions.has(perm);
@@ -220,6 +222,18 @@ export class ExportsController {
           { key: 'items', label: 'Items', width: 30 }, { key: 'method', label: 'Method', width: 8 }, { key: 'total', label: 'Amount', width: 10, money: true }, { key: 'status', label: 'Status', width: 9 }],
           rows: r.rows.map((x) => ({ ...x, method: METHOD[x.method] ?? x.method, status: x.status === 'cancelled' ? 'Cancelled' : 'Paid' })), totals: { items: 'Total (excluding cancelled)', total: r.total } };
       }
+      case 'activity': {
+        if (!u.isSuperAdmin || u.workspace !== 'staff') throw Errors.forbidden();
+        const p = z.object({ from: date.optional(), to: date.optional(), type: z.enum(['signin', 'change', 'download']).optional(), userId: z.string().max(40).optional(), proxyOnly: z.string().optional(), module: z.string().max(50).optional() }).parse(q);
+        const r = await this.activity.list({ ...p, proxyOnly: !!p.proxyOnly, limit: 500 });
+        const ist = (iso: string) => new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        const brief = (v: unknown) => (v == null ? '' : JSON.stringify(v).slice(0, 300));
+        return { title: 'Activity log', subtitle: `${p.from ?? 'start'} to ${p.to ?? 'today'} · India time · ${r.rows.length} entries${r.next ? ' (first 500)' : ''}`, fileName: `activity-${p.from ?? 'all'}-to-${p.to ?? 'today'}`, columns: [
+          { key: 'time', label: 'When (IST)', width: 16 }, { key: 'who', label: 'Who', width: 14 }, { key: 'via', label: 'Via Login as', width: 11 }, { key: 'what', label: 'What', width: 22 },
+          { key: 'entity', label: 'About', width: 16 }, { key: 'before', label: 'Before', width: 22 }, { key: 'after', label: 'After', width: 22 }, { key: 'device', label: 'Device', width: 13 }, { key: 'ip', label: 'IP', width: 11 }],
+          rows: r.rows.map((x) => ({ time: ist(x.at), who: x.who, via: x.actingName ? `by ${x.actingName}` : '', what: `${x.module ?? ''} · ${x.action}${x.reason ? ` (${x.reason})` : ''}`,
+            entity: x.entity ?? (x.entityType ? `${x.entityType} #${x.entityId}` : ''), before: brief(x.before), after: brief(x.after), device: x.device ?? '', ip: x.ip ?? '' })) };
+      }
       default: throw Errors.notFound('Export');
     }
   }
@@ -231,14 +245,14 @@ export class ExportsController {
   }
 
   @Get(':name')
-  async export(@CurrentUser() u: RequestUser, @Param('name') file: string, @Query() q: Record<string, string>, @Res() res: Response) {
+  async export(@CurrentUser() u: RequestUser, @Param('name') file: string, @Query() q: Record<string, string>, @Req() req: AppRequest, @Res() res: Response) {
     const m = /^([a-z-]+)\.(xlsx|pdf)$/.exec(file);
     if (!m) throw Errors.notFound('Export');
     let t: ExportTable;
     try { t = await this.build(u, m[1], q); } catch (e) { if (e instanceof z.ZodError) throw Errors.validation(e.issues.map((i) => ({ field: i.path.join('.'), message: i.message }))); throw e; }
     const school = await this.db.selectFrom('institution_settings').select(['name', 'address', 'brand_primary']).where('id', '=', 1).executeTakeFirstOrThrow();
     const buf = m[2] === 'xlsx' ? await toXlsx(t) : await toPdf(t, school);
-    await this.audit.log(u, { module: 'reports', action: 'export', after: { list: m[1], format: m[2], rows: t.rows.length } });
+    await this.audit.log(u, { module: 'reports', action: 'export', after: { list: m[1], format: m[2], rows: t.rows.length, filters: q }, ...clientMeta(req) });
     const fname = `${t.fileName.replace(/[^\w.-]+/g, '-')}.${m[2]}`;
     res.setHeader('Content-Type', m[2] === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
