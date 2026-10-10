@@ -90,8 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session.setToken(null);
     session.setWorkspace(null);
     qc.clear();
-    setMe(null);
-    setStatus('anonymous');
+    // After signing out, go to the school's website (it opens the sign-in page when the website is switched off).
+    window.location.assign('/');
   };
 
   const switchWorkspace = async (w: Workspace) => {

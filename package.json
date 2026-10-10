@@ -1,7 +1,7 @@
 {
   "name": "ems",
   "private": true,
-  "version": "0.16.0",
+  "version": "0.18.0",
   "description": "Education Management System (single institute). Runs on XAMPP (MariaDB) locally and Hostinger Node.js hosting (MySQL/MariaDB).",
   "workspaces": [
     "apps/api",
@@ -15,7 +15,8 @@
     "db:seed": "npm run db:seed -w @ems/api",
     "test": "npm run test:e2e -w @ems/api",
     "doctor": "node scripts/doctor.js",
-    "manifest": "node scripts/make-manifest.js"
+    "manifest": "node scripts/make-manifest.js",
+    "demo": "node apps/api/dist/database/demo.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

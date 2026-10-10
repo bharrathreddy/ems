@@ -97,7 +97,7 @@ set TEST_DB_PASSWORD=
 npm test
 ```
 
-You should see **196 passed**.
+You should see **198 passed**.
 
 ---
 

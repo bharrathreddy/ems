@@ -69,7 +69,8 @@ describe('Security checks (e2e)', () => {
       expect(r.headers['content-security-policy']).toContain("frame-ancestors 'self'");
       expect(r.headers['content-security-policy']).toContain("object-src 'none'");
       expect(r.headers['permissions-policy']).toContain('microphone=()');
-      expect(r.headers['referrer-policy']).toBeDefined();
+      // YouTube embeds fail (Error 153) without the site address; the full page path never leaves the site.
+      expect(r.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     }
   });
 

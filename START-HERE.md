@@ -1,4 +1,4 @@
-# Start here (version 0.16.0)
+# Start here (version 0.18.0)
 
 This one package contains everything so far: students and parents, fees and receipts,
 teaching grid and timetable, the public school website, year end, attendance, the dashboard, exams and report cards, Excel/PDF exports, fee reminder emails, HR, payroll and expenses, and (new in 0.11.0) transport, stock and the sales counter.
@@ -21,7 +21,7 @@ teaching grid and timetable, the public school website, year end, attendance, th
    npm run build
    npm start
    ```
-5. Wait for: `Ready (version 0.16.0). Website: http://localhost:3000/ ...`
+5. Wait for: `Ready (version 0.18.0). Website: http://localhost:3000/ ...`
 6. Open:
    - Website: **http://localhost:3000/**
    - Staff and parent app: **http://localhost:3000/app/login**
@@ -59,6 +59,54 @@ If `npm start` says *The last build did not finish*, run `npm run build` again.
 
 The cycle: the subject teacher enters marks in **Marks** and submits → the principal approves in **Exams → Approvals**
 → the principal **publishes** each section → parents see results and the report card.
+
+## New in 0.18.0
+
+- **Demo website without a terminal.** For a separate demo website on Hostinger: give it its own empty database,
+  and in hPanel → the website → **Environment variables** add `DEMO_DATA` = `yes`, then restart the app. On start it fills
+  itself with the demo school (a few minutes; the log shows "Demo data: ready"). The photos are saved on that server.
+  - It only fills an **empty** database. If the database already has a school, it does nothing.
+  - If the server restarts in the middle, it clears the half-filled demo and starts again on the next start.
+  - The developer login is the email in that website's settings, with the password Demo@1234 unless you set a real one.
+  - **Never** add `DEMO_DATA` to a real school's website.
+- **Signing out** now goes to the school's website (or to the sign-in page if the website is switched off).
+
+## Demo school with sample data (new in 0.17.0)
+
+A complete pretend school for showing the app or trying every screen: **Sri Vidya Niketan High School**,
+Nursery to Class 10 (18 sections), 138 students, 122 parent logins, 31 staff with every role, and a few months of use:
+fees and receipts, bus routes, attendance, leave, FA1 and FA2 marks with results, the SA1 timetable and hall tickets,
+homework and diary, notices, a filled-in website, admission enquiries, payroll and payslips, expenses, stock and book sales.
+
+**Never run it on the school's real database.** It only fills an empty database and refuses otherwise.
+
+1. In phpMyAdmin create a new empty database, for example `ems_demo` (collation `utf8mb4_unicode_ci`).
+2. In the project folder run:  `npm run demo -- --db ems_demo`  (takes 1–2 minutes). No terminal? Use `DEMO_DATA=yes` instead (see New in 0.18.0).
+3. To open it, set `DB_NAME=ems_demo` in `.env` and run `npm start`. Change it back to your real database name afterwards.
+
+Every login uses the password **Demo@1234**. The full list (each staff member and every parent with their children)
+is written to `DEMO-LOGINS.md` in the project folder; a copy is in `docs/DEMO-LOGINS.md`. Good ones to start with:
+
+| Who | Login |
+| --- | --- |
+| Principal | 9848100001 |
+| Institution Admin | 9848100003 |
+| Accountant | 9848100004 |
+| Class teacher, Class 5 A | 9848100020 |
+| Maths teacher and exam coordinator | 9848100026 |
+| Driver | 9848100009 |
+| Parent with two children | 9000200006 |
+| Developer | your developer email from `.env` (password Demo@1234 if `.env` still has the example password) |
+
+Dates are for the 2026-27 year: FA1 and FA2 are done and published, SA1 is in November (hall tickets ready).
+Phone numbers and emails are made up (`@example.com`), so no message reaches a real person.
+
+## Fix in 0.16.1
+
+- Website videos showed **"Video player configuration error · Error 153"** instead of playing. YouTube now needs to know
+  which website shows the video, and the app was hiding that. It now tells other sites only your site's address
+  (for example `https://vedicschool.telanganaindia.in`), never the page or any details. After updating, open the
+  website again; if a phone still shows the error, refresh the page once.
 
 ## Hall tickets (new in 0.16.0)
 

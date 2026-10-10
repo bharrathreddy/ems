@@ -56,7 +56,9 @@ describe('Dashboard analytics (e2e)', () => {
     K.holiday = h;
     await as(dev).post('/api/v1/attendance/holidays', { name: 'Dash Festival', startDate: h });
     await as(dev).post('/api/v1/cms/events', { title: 'Science Day', eventDate: addDays(today, 10) });
-    const lr = await as(teacher).post('/api/v1/leave-requests/mine', { startDate: addDays(today, 1), endDate: addDays(today, 1), reason: 'Personal' });
+    // The next working day (tomorrow may be a Sunday or holiday).
+    let lr: any;
+    for (let n = 1; n <= 7 && !lr?.body?.data?.id; n++) lr = await as(teacher).post('/api/v1/leave-requests/mine', { startDate: addDays(today, n), endDate: addDays(today, n), reason: 'Personal' });
     K.leaveId = lr.body.data.id;
   });
   afterAll(async () => { await app.close(); await db.destroy(); });

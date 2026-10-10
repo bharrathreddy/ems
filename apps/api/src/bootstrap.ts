@@ -22,7 +22,9 @@ export async function createApp(): Promise<INestApplication> {
   app.setGlobalPrefix('api/v1');
   app.set('trust proxy', 1);
 
+  // YouTube's player needs to know which site embeds it (Error 153 without it), so send the site address (never the full page path) to other sites.
   const strict = helmet({
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -37,7 +39,7 @@ export async function createApp(): Promise<INestApplication> {
       },
     },
   });
-  const docsCsp = helmet({ contentSecurityPolicy: false });
+  const docsCsp = helmet({ contentSecurityPolicy: false, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } });
   app.use((req: Request, res: Response, next: NextFunction) => (req.path.startsWith('/api/docs') ? docsCsp : strict)(req, res, next));
   // Location is used by staff check-in; nothing on the site may use the microphone, payment or USB APIs.
   app.use((_req: Request, res: Response, next: NextFunction) => { res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()'); next(); });

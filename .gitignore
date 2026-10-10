@@ -6,3 +6,6 @@ dist-dev
 coverage
 storage
 *.tsbuildinfo
+
+# Written by "npm run demo" (a copy is in docs/)
+/DEMO-LOGINS.md

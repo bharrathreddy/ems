@@ -4,8 +4,10 @@ import { runMigrations } from './database/migrate';
 import { createDatabase } from './database/database.module';
 import { seed, seedOptionsFromEnv } from './database/seed';
 import { createApp } from './bootstrap';
+import { demoWanted, resetInterruptedDemo, startDemoIfWanted } from './database/demo-start';
 
 async function main() {
+  if (demoWanted()) await resetInterruptedDemo(config.db);
   if (config.autoMigrate) {
     // Hostinger has no deploy hook for database steps, so the app prepares its own database on start.
     const applied = await runMigrations(config.db);
@@ -17,6 +19,7 @@ async function main() {
   const app = await createApp();
   await app.listen(config.port);
   console.log(`Ready (version ${APP_VERSION}). Website: http://localhost:${config.port}/  App: http://localhost:${config.port}/app`);
+  void startDemoIfWanted(config.port);
 }
 
 /** Plain-language startup errors with the fix (Windows reports some network errors with an empty message). */

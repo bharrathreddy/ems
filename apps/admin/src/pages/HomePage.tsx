@@ -63,7 +63,8 @@ function SetupChecklist() {
 export default function HomePage() {
   const auth = useAuth();
   const me = auth.me!;
-  const first = me.user.name.split(' ')[0];
+  // Skip titles and initials ("Dr. K. Padmavathi" → Padmavathi, "M. Srinivas Rao" → Srinivas).
+  const first = me.user.name.split(/\s+/).find((w) => !/^(dr|mr|mrs|ms|prof|md|sri|smt)\.?$/i.test(w) && !/^[A-Za-z]{1,2}\.$/.test(w)) ?? me.user.name;
   const modules = NAV.filter((n) => n.to !== '/' && n.show(auth) && n.to !== '/developer');
   const [yearId, setYearId] = useState<number | undefined>();
   const dash = useDashboard(me.workspace === 'staff' ? yearId : undefined);

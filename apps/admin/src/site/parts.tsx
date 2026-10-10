@@ -77,7 +77,7 @@ export function Video({ id, title }: { id: string; title: string }) {
   return (
     <figure>
       <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-        {play ? <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={title} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+        {play ? <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
           : <button onClick={() => setPlay(true)} className="group h-full w-full" aria-label={`Play ${title}`}>
               <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100" />
               <span className="absolute inset-0 grid place-items-center"><span className="grid h-16 w-16 place-items-center rounded-full bg-white/95 text-brand shadow-lg transition-transform group-hover:scale-110"><Play size={28} fill="currentColor" className="ml-1" /></span></span>

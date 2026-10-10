@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
+import { isDemoFillRequest } from './database/demo-start';
 import { CommonModule } from './common/common.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { ResponseInterceptor } from './common/response.interceptor';
@@ -38,7 +39,7 @@ import { AccessModule } from './access/access.module';
   imports: [
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MIN ?? 300) }],
-      skipIf: () => process.env.NODE_ENV === 'test',
+      skipIf: (ctx) => process.env.NODE_ENV === 'test' || isDemoFillRequest(ctx.switchToHttp().getRequest()),
     }),
     DatabaseModule, CommonModule, PermissionsModule, MailModule,
     AuthModule, StaffModule, AcademicsModule, SettingsModule,
